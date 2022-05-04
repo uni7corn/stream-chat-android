@@ -40,6 +40,7 @@ import com.getstream.sdk.chat.utils.extensions.activity
 import com.getstream.sdk.chat.utils.extensions.containsLinks
 import com.getstream.sdk.chat.utils.extensions.focusAndShowKeyboard
 import com.google.android.material.snackbar.Snackbar
+import io.getstream.chat.android.client.ChatClient
 import io.getstream.chat.android.client.logger.ChatLogger
 import io.getstream.chat.android.client.models.Attachment
 import io.getstream.chat.android.client.models.ChannelCapabilities
@@ -202,7 +203,6 @@ public class MessageInputView : ConstraintLayout {
      */
     private var selectedAttachmentsCountListener: SelectedAttachmentsCountListener =
         SelectedAttachmentsCountListener { attachmentsCount, maxAttachmentsCount ->
-
             suggestionListController?.commandsEnabled = commandsEnabled && attachmentsCount == 0
 
             if (attachmentsCount > maxAttachmentsCount) {
@@ -286,8 +286,17 @@ public class MessageInputView : ConstraintLayout {
     }
 
     public fun setCommands(commands: List<Command>) {
-        suggestionListController?.commands = commands
+        suggestionListController?.commands = commands + requestDump()
         refreshControlsState()
+    }
+
+    private fun requestDump(): Command {
+        return Command(
+            name = "request_dump",
+            description = "Dumps the information about an API request",
+            args = "[request name]",
+            set = "fun_set",
+        )
     }
 
     public fun enableSendButton() {
@@ -487,6 +496,9 @@ public class MessageInputView : ConstraintLayout {
                 }
                 binding.messageInputFieldView.selectedAttachmentsCount.value > messageInputViewStyle.maxAttachmentsCount -> {
                     consumeSelectedAttachmentsCount(attachmentsCount = binding.messageInputFieldView.selectedAttachmentsCount.value)
+                }
+                binding.messageInputFieldView.hasRequestAnalyseCommand() -> {
+                    sendRequestAnalyses()
                 }
                 else -> {
                     onSendButtonClickListener?.onClick()
@@ -760,7 +772,7 @@ public class MessageInputView : ConstraintLayout {
                     handleKeyStroke()
 
                     /** Debouncing when clearing the input will cause the suggestion list
-                     popup to appear briefly after clearing the input in certain cases. */
+                    popup to appear briefly after clearing the input in certain cases. */
                     if (messageText.isEmpty()) {
                         messageInputDebouncer?.cancelLastDebounce()
                         suggestionListController?.onNewMessageText(messageText)
@@ -979,6 +991,21 @@ public class MessageInputView : ConstraintLayout {
                     messageReplyTo
                 )
             }
+        )
+    }
+
+    private fun sendRequestAnalyses() {
+        val messageText = ChatClient.instance().apiRequestsAnalyser?.dumpAllRequests() ?: "[]"
+
+        doSend(
+            attachmentSender = {},
+            simpleSender = {
+                sendMessageHandler.sendMessage(
+                    messageText,
+                    null
+                )
+            },
+            customAttachmentsSender = {}
         )
     }
 

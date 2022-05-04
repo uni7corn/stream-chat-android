@@ -77,6 +77,8 @@ internal class MessageInputFieldView : FrameLayout {
     private val _selectedAttachmentsCount = MutableStateFlow(0)
     internal val selectedAttachmentsCount: StateFlow<Int> = _selectedAttachmentsCount
 
+    internal fun hasRequestAnalyseCommand(): Boolean = messageText.trim().startsWith("/request_dump")
+
     var mode: Mode by Delegates.observable(Mode.MessageMode) { _, oldMode, newMode ->
         if (oldMode != newMode) {
             onModeChanged(newMode)
