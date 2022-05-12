@@ -6,6 +6,7 @@ import io.getstream.chat.android.command.version.plugin.VersionBumpPlugin
 import io.getstream.chat.android.command.version.plugin.MinorBumpPlugin
 import io.getstream.chat.android.command.version.plugin.VersionPrintPlugin
 import io.getstream.chat.android.command.changelog.plugin.ChangelogAddModelSectionPlugin
+import io.getstream.chat.android.command.dokka.plugin.DokkaTemplatePlugin
 
 apply plugin: "com.github.ben-manes.versions"
 apply plugin: 'io.github.gradle-nexus.publish-plugin'
@@ -19,7 +20,7 @@ apply plugin: VersionBumpPlugin
 apply plugin: MinorBumpPlugin
 apply plugin: VersionPrintPlugin
 apply plugin: ChangelogAddModelSectionPlugin
-
+apply plugin: DokkaTemplatePlugin
 
 buildscript {
     repositories {
@@ -97,6 +98,10 @@ changelogReleaseSection {
 changelogAddModelSection {
     changelogPath = "CHANGELOG.md"
     changelogModel = "CHANGELOG_MODEL.md"
+}
+
+dokkaTemplate {
+    filePath = "./stream-chat-android-client/src/main/java/io/getstream/chat/android/client/ChatClient.kt"
 }
 
 task clean(type: Delete) {
