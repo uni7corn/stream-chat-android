@@ -14,25 +14,29 @@
  * limitations under the License.
  */
 
-package io.getstream.chat.android.client.api
+package io.getstream.chat.android.client.plugins.requests
 
-import io.getstream.chat.android.client.logger.ChatLogger
+public interface ApiRequestsAnalyser {
 
-@Suppress("LongParameterList")
-public class ChatClientConfig(
-    public val apiKey: String,
-    public var httpUrl: String,
-    public var cdnHttpUrl: String,
-    public var wssUrl: String,
-    public val warmUp: Boolean,
-    public val loggerConfig: ChatLogger.Config,
-    public val cacheApiCallTimeout: Int = DEFAULT_CACHE_MILLIS,
-    public val debugRequests: Boolean
-) {
-    public var isAnonymous: Boolean = false
+    public fun registerRequest(requestName: String, data: Map<String, String>)
+
+    public fun dumpRequestByName(requestName: String): String
+
+    public fun dumpAll(): String
+
+    public fun clearAll()
+
+    public fun clearRequestContaining(queryText: String)
+
+    public fun countRequestByName(requestName: String): Int
+
+    public fun countAllRequests(): Int
 
     public companion object {
-        public const val DEFAULT_CACHE_MILLIS: Int = 300
-        public const val NEVER_CACHE: Int = -1
+        private var instance: ApiRequestsAnalyser? = null
+
+        public fun get(): ApiRequestsAnalyser = instance ?: ApiRequestsDumper().also { dumper ->
+            instance = dumper
+        }
     }
 }

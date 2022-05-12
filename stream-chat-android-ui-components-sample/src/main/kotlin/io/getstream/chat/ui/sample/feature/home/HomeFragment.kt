@@ -17,10 +17,12 @@
 package io.getstream.chat.ui.sample.feature.home
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
 import androidx.fragment.app.Fragment
@@ -29,6 +31,7 @@ import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupWithNavController
+import io.getstream.chat.android.client.plugins.requests.ApiRequestsAnalyser
 import io.getstream.chat.android.client.utils.internal.toggle.dialog.ToggleDialogFragment
 import io.getstream.chat.android.core.internal.InternalStreamChatApi
 import io.getstream.chat.android.livedata.utils.EventObserver
@@ -79,6 +82,7 @@ class HomeFragment : Fragment() {
         )
         binding.channelListHeaderView.apply {
             channelListHeaderViewModel.bindView(this, viewLifecycleOwner)
+
             setOnActionButtonClickListener {
                 navigateSafely(R.id.action_homeFragment_to_addChannelFragment)
             }
@@ -86,6 +90,15 @@ class HomeFragment : Fragment() {
                 binding.drawerLayout.openDrawer(GravityCompat.START)
             }
             if (BuildConfig.DEBUG) {
+                setTextClickListener {
+                    Log.d("ApiRequestsAnalyser", ApiRequestsAnalyser.get().dumpAll())
+                }
+
+                setTextLongClickListener {
+                    ApiRequestsAnalyser.get().clearAll()
+                    Toast.makeText(requireContext(), "ApiRequestsAnalyser clean", Toast.LENGTH_SHORT).show()
+                }
+
                 setOnUserAvatarLongClickListener {
                     ToggleDialogFragment().apply {
                         togglesChangesCommittedListener = { changedToggles ->

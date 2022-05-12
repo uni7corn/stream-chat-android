@@ -121,6 +121,7 @@ import io.getstream.chat.android.client.notifications.PushNotificationReceivedLi
 import io.getstream.chat.android.client.notifications.handler.NotificationConfig
 import io.getstream.chat.android.client.notifications.handler.NotificationHandler
 import io.getstream.chat.android.client.notifications.handler.NotificationHandlerFactory
+import io.getstream.chat.android.client.plugins.requests.ApiRequestsAnalyser
 import io.getstream.chat.android.client.setup.InitializationCoordinator
 import io.getstream.chat.android.client.socket.ChatSocket
 import io.getstream.chat.android.client.socket.SocketListener
@@ -2209,6 +2210,8 @@ internal constructor(
         private var customOkHttpClient: OkHttpClient? = null
         private var userCredentialStorage: UserCredentialStorage? = null
         private var retryPolicy: RetryPolicy = NoRetryPolicy()
+        private var apiRequestsAnalyser: ApiRequestsAnalyser? = null
+        private var debugRequests: Boolean = false
 
         /**
          * Sets the log level to be used by the client.
@@ -2354,6 +2357,19 @@ internal constructor(
             userCredentialStorage = credentialStorage
         }
 
+        public fun withApiRequestAnalyser(
+            apiRequestsAnalyser: ApiRequestsAnalyser,
+            debugOnly: Boolean = true,
+        ): Builder = apply {
+            if (debugOnly && BuildConfig.DEBUG) {
+                this.apiRequestsAnalyser = apiRequestsAnalyser
+            }
+        }
+
+        public fun debugRequests(shouldDebug: Boolean): Builder = apply {
+            this.debugRequests = shouldDebug
+        }
+
         /**
          * Sets a custom [RetryPolicy] used to determine whether a particular call should be retried.
          * By default, no calls are retried.
@@ -2405,6 +2421,7 @@ internal constructor(
                 wssUrl = "wss://$baseUrl/",
                 warmUp = warmUp,
                 loggerConfig = ChatLogger.Config(logLevel, loggerHandler),
+                debugRequests
             )
 
             if (ToggleService.isInitialized().not()) {
