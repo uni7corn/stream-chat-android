@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.getstream.chat.android.client.BuildConfig.STREAM_CHAT_VERSION
 import io.getstream.chat.android.client.ChatClient
+import io.getstream.chat.android.client.logger.ChatLogger
 import io.getstream.chat.android.compose.sample.ChatHelper
 import io.getstream.chat.android.compose.sample.R
 import io.getstream.chat.android.compose.sample.data.PredefinedUserCredentials
@@ -60,11 +61,16 @@ import io.getstream.chat.android.compose.sample.data.UserCredentials
 import io.getstream.chat.android.compose.sample.ui.ChannelsActivity
 import io.getstream.chat.android.compose.ui.components.avatar.UserAvatar
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * An Activity that allows users to log in using one of our predefined sample users.
  */
 class UserLoginActivity : AppCompatActivity() {
+
+    val logger = ChatLogger.get("UserLoginActivity")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,9 +84,30 @@ class UserLoginActivity : AppCompatActivity() {
                             // login screen then we need to reinitialize the SDK with our API key.
                             ChatHelper.initializeSdk(applicationContext, userCredentials.apiKey)
                         }
-                        ChatHelper.connectUser(userCredentials)
-
-                        openChannels()
+                        ChatHelper.connectUser(
+                            userCredentials = userCredentials.copy(token = userCredentials.token + "a"),
+                            onSuccess = {
+                                logger.logW("This message shouldn't be shown because we are using an invalid token")
+                                openChannels()
+                            },
+                            onError = {
+                                logger.logD("Login failed because token was invalid: $it")
+                                GlobalScope.launch {
+                                    logger.logD("Waiting some seconds to do login again")
+                                    delay(6000)
+                                    ChatHelper.connectUser(
+                                        userCredentials = userCredentials.copy(token = userCredentials.token),
+                                        onSuccess = {
+                                            logger.logD("Token is valie, so Login should be successful")
+                                            openChannels()
+                                        },
+                                        onError = {
+                                            logger.logW("Login failed, but token was valid, $it")
+                                        }
+                                    )
+                                }
+                            }
+                        )
                     },
                     onCustomLoginClick = ::openCustomLogin
                 )
