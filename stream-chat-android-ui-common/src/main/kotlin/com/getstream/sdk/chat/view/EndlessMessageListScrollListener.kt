@@ -21,7 +21,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.util.Date
 
-private const val DEFAULT_BOTTOM_TRIGGER_LIMIT = 50
+private const val DEFAULT_BOTTOM_TRIGGER_LIMIT = 30
 private const val DEFAULT_TRIGGER_DELAY = 700L
 
 /**

@@ -17,5 +17,5 @@
 package io.getstream.chat.android.offline.plugin.logic.channel.internal
 
 public data class MessagesGapInfo(
-    val messagesBellowGap: List<Long>
+    val messagesAboveGap: List<Long>
 )

@@ -124,7 +124,7 @@ internal class ChannelLogic(
     private val attachmentUrlValidator: AttachmentUrlValidator = AttachmentUrlValidator(),
 ) : QueryChannelListener {
 
-    private var messageIdsBellowGap = mutableListOf<Long>()
+    private var messageIdsAboveGap = mutableListOf<Long>()
 
     /* This message divides gaps. Messages olders than this, are added bellow gap, messes newer than this are
     * added bellow gap */
@@ -190,9 +190,9 @@ internal class ChannelLogic(
         val noMoreMessagesAvailable = request.messagesLimit() > channel.messages.size
 
         if (request.isFilteringNewerMessages()) {
-            handleNewerMessagesLimit(!noMoreMessagesAvailable, channel.messages, messageIdsBellowGap, canCreateGap)
+            handleNewerMessagesLimit(!noMoreMessagesAvailable, channel.messages, messageIdsAboveGap, canCreateGap)
         } else {
-            handleOlderMessagesLimit(noMoreMessagesAvailable, messageIdsBellowGap, channel.messages)
+            handleOlderMessagesLimit(!noMoreMessagesAvailable, messageIdsAboveGap, channel.messages)
         }
     }
 
@@ -212,14 +212,13 @@ internal class ChannelLogic(
 
                 mutableState._gapsInMessageList.value = false to null
 
-                messageIdsBellowGap.clear()
+                messageIdsAboveGap.clear()
             }
 
             // Has gaps and loading more messages
             mutableState.gapsInMessageList.value?.first == true -> {
                 addOlderGapMessages(gapDivisorMessage, newMessages)
-                mutableState._gapsInMessageList.value =
-                    true to MessagesGapInfo(messageIdsBellowGap)
+                mutableState._gapsInMessageList.value = true to MessagesGapInfo(messageIdsAboveGap)
             }
 
             else -> {
@@ -245,7 +244,7 @@ internal class ChannelLogic(
 
                 mutableState._gapsInMessageList.value = false to null
 
-                messageIdsBellowGap.clear()
+                messageIdsAboveGap.clear()
             }
 
             /* The messages list had no gaps but newer messages were loaded. As it didn't reach the end of the
@@ -255,18 +254,19 @@ internal class ChannelLogic(
                 !newMessages.hasMessageOverlap(gapSideMessages) &&
                 canCreateGap -> {
 
+
                 gapDivisorMessage = newMessages.first()
 
                 addNewerGapMessages(gapDivisorMessage, newMessages)
                 mutableState._gapsInMessageList.value =
-                    true to MessagesGapInfo(messageIdsBellowGap)
+                    true to MessagesGapInfo(messageIdsAboveGap)
             }
 
             // Has gaps and loading more messages
             mutableState.gapsInMessageList.value?.first == true -> {
                 addNewerGapMessages(gapDivisorMessage, newMessages)
                 mutableState._gapsInMessageList.value =
-                    true to MessagesGapInfo(messageIdsBellowGap)
+                    true to MessagesGapInfo(messageIdsAboveGap)
             }
 
             else -> {
@@ -276,11 +276,11 @@ internal class ChannelLogic(
     }
 
     private fun addNewerGapMessages(gapDivisor: Message?, newMessages: List<Message>) {
-        if (mutableState.gapsInMessageList.value?.first == true && gapDivisor != null) {
+        if (gapDivisor != null) {
             val bellowGap = newMessages.filter { message -> message.createdAt?.after(gapDivisor.createdAt) == true }
                 .map { message -> message.id.hashCode().toLong() }
 
-            messageIdsBellowGap.addAll(bellowGap)
+            messageIdsAboveGap.addAll(bellowGap)
         }
     }
 
@@ -289,7 +289,7 @@ internal class ChannelLogic(
             val bellowGap = newMessages.filter { message -> message.createdAt?.after(gapDivisor.createdAt) == true }
                 .map { message -> message.id.hashCode().toLong() }
 
-            messageIdsBellowGap = (bellowGap + messageIdsBellowGap).toMutableList()
+            messageIdsAboveGap = (bellowGap + messageIdsAboveGap).toMutableList()
         }
     }
 
