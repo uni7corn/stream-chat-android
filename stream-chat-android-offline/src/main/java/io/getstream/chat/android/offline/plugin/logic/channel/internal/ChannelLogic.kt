@@ -125,6 +125,8 @@ internal class ChannelLogic(
 ) : QueryChannelListener {
 
     private var messageIdsAboveGap = mutableListOf<Long>()
+    private var messageIdsBellowGap = mutableListOf<Long>()
+
 
     /* This message divides gaps. Messages olders than this, are added bellow gap, messes newer than this are
     * added bellow gap */
@@ -172,7 +174,7 @@ internal class ChannelLogic(
         }
             .onSuccess { channel ->
                 mutableState.recoveryNeeded = false
-                handleMessageLimits(request, channel, request.canCreateGap)
+                handleMessageLimits(request, channel)
                 updateDataFromChannel(channel)
             }
             .onError { error ->
@@ -186,13 +188,15 @@ internal class ChannelLogic(
             }
     }
 
-    private fun handleMessageLimits(request: QueryChannelRequest, channel: Channel, canCreateGap: Boolean) {
+    private fun handleMessageLimits(request: QueryChannelRequest, channel: Channel) {
         val noMoreMessagesAvailable = request.messagesLimit() > channel.messages.size
 
+
         if (request.isFilteringNewerMessages()) {
-            handleNewerMessagesLimit(!noMoreMessagesAvailable, channel.messages, messageIdsAboveGap, canCreateGap)
+            handleNewerMessagesLimit(!noMoreMessagesAvailable, channel.messages, messageIdsAboveGap, request.canCreateGap)
         } else {
-            handleOlderMessagesLimit(!noMoreMessagesAvailable, messageIdsAboveGap, channel.messages)
+            val isSearchQuery = request.isFilteringNewerMessages() || request.filteringOlderMessages()
+            handleOlderMessagesLimit(!noMoreMessagesAvailable, messageIdsBellowGap, channel.messages, isSearchQuery)
         }
     }
 
@@ -200,6 +204,7 @@ internal class ChannelLogic(
         moreMessagesAvailable: Boolean,
         gapSideMessages: List<Long>,
         newMessages: List<Message>,
+        isSearchRequest: Boolean
     ) {
         mutableState._endOfOlderMessages.value = !moreMessagesAvailable
 
@@ -217,8 +222,13 @@ internal class ChannelLogic(
 
             // Has gaps and loading more messages
             mutableState.gapsInMessageList.value?.first == true -> {
-                addOlderGapMessages(gapDivisorMessage, newMessages)
-                mutableState._gapsInMessageList.value = true to MessagesGapInfo(messageIdsAboveGap)
+                addOlderGapMessages(gapDivisorMessage, newMessages, isSearchRequest)
+                mutableState._gapsInMessageList.value = true to MessagesGapInfo(messageIdsAboveGap, messageIdsBellowGap)
+            }
+
+            /* No gaps so far, only adding normal messages. They will be all considered at bellow the gap */
+            mutableState.gapsInMessageList.value?.first != true -> {
+                addOlderGapMessages(gapDivisorMessage, newMessages, isSearchRequest)
             }
 
             else -> {
@@ -259,14 +269,14 @@ internal class ChannelLogic(
 
                 addNewerGapMessages(gapDivisorMessage, newMessages)
                 mutableState._gapsInMessageList.value =
-                    true to MessagesGapInfo(messageIdsAboveGap)
+                    true to MessagesGapInfo(messageIdsAboveGap, messageIdsBellowGap)
             }
 
             // Has gaps and loading more messages
             mutableState.gapsInMessageList.value?.first == true -> {
                 addNewerGapMessages(gapDivisorMessage, newMessages)
                 mutableState._gapsInMessageList.value =
-                    true to MessagesGapInfo(messageIdsAboveGap)
+                    true to MessagesGapInfo(messageIdsAboveGap, messageIdsBellowGap)
             }
 
             else -> {
@@ -277,19 +287,28 @@ internal class ChannelLogic(
 
     private fun addNewerGapMessages(gapDivisor: Message?, newMessages: List<Message>) {
         if (gapDivisor != null) {
-            val bellowGap = newMessages.filter { message -> message.createdAt?.after(gapDivisor.createdAt) == true }
+            val aboveGap = newMessages.filter { message -> message.createdAt?.after(gapDivisor.createdAt) == true }
                 .map { message -> message.id.hashCode().toLong() }
 
-            messageIdsAboveGap.addAll(bellowGap)
+            messageIdsAboveGap.addAll(aboveGap)
         }
     }
 
-    private fun addOlderGapMessages(gapDivisor: Message?, newMessages: List<Message>) {
-        if (mutableState.gapsInMessageList.value?.first == true && gapDivisor != null) {
-            val bellowGap = newMessages.filter { message -> message.createdAt?.after(gapDivisor.createdAt) == true }
-                .map { message -> message.id.hashCode().toLong() }
+    private fun addOlderGapMessages(gapDivisor: Message?, newMessages: List<Message>, isSearchRequest: Boolean) {
+        val hasGap = mutableState.gapsInMessageList.value?.first
 
-            messageIdsAboveGap = (bellowGap + messageIdsAboveGap).toMutableList()
+        when {
+            hasGap == true && gapDivisor != null -> {
+                val bellowGap = newMessages.filter { message -> message.createdAt?.after(gapDivisor.createdAt) == true }
+                    .map { message -> message.id.hashCode().toLong() }
+
+                messageIdsBellowGap.addAll(bellowGap)
+            }
+
+            hasGap != true && !isSearchRequest -> {
+                val bellowGap = newMessages.map { message -> message.id.hashCode().toLong() }
+                messageIdsBellowGap.addAll(bellowGap)
+            }
         }
     }
 
