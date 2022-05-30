@@ -16,7 +16,10 @@
 
 package io.getstream.chat.android.offline.plugin.logic.channel.internal
 
+import io.getstream.chat.android.client.models.Message
+
 public data class MessagesGapInfo(
-    val messagesAboveGap: List<Long>,
-    val messagesBellowGap: List<Long>
+    val messageIdsAboveGap: List<Long>,
+    val messageIdsBellowGap: List<Long>,
+    val messagesBellowGap: List<Message>
 )

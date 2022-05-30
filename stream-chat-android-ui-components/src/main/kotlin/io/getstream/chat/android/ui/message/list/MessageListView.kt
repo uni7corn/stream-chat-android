@@ -148,8 +148,9 @@ public class MessageListView : ConstraintLayout {
 
     private val buffer: StartStopBuffer<MessageListItemWrapper> = StartStopBuffer()
 
-    private var messagesAboveGap: List<Long>? = null
-    private var messagesBellowGap: List<Long>? = null
+    private var messageIdsAboveGap: List<Long>? = null
+    private var messageIdsBellowGap: List<Long>? = null
+    private var messagesBellowGap: MutableList<Message>? = mutableListOf<Message>()
     private var hasGap: Boolean? = null
 
     // This is the message at the most bottom position in the gap.
@@ -638,6 +639,7 @@ public class MessageListView : ConstraintLayout {
                     }
                 }
                 val loadMoreAtGapTopListener: () -> Unit = {
+                    Log.d("MessageListView", "Requesting new messages before: ${lastMessageBellowGap?.id}|${lastMessageBellowGap?.text}")
                     lastMessageBellowGap?.let { message ->
                         gapEndRegionReachedByTop.onGapEndRegionReachedByTop(message.id)
                     }
@@ -668,12 +670,13 @@ public class MessageListView : ConstraintLayout {
         Log.d("MessageListView", "Gap in message: ${this.hasGap}")
         this.hasGap = hasGap
         scrollListener.hasGap = this.hasGap!!
-        this.messagesAboveGap = gapInfo?.messagesAboveGap
-        this.messagesBellowGap = gapInfo?.messagesBellowGap
+        this.messageIdsAboveGap = gapInfo?.messageIdsAboveGap
+        this.messageIdsBellowGap = gapInfo?.messageIdsBellowGap
+        this.messagesBellowGap = gapInfo?.messagesBellowGap?.toMutableList()
     }
 
     private fun updateMessageAboveGap() {
-        if (this.hasGap == true && messagesAboveGap != null) {
+        if (this.hasGap == true && messageIdsAboveGap != null) {
             val messageList = adapter.currentList
 
             val allIds = messageList.map { messageListItem ->
@@ -681,7 +684,7 @@ public class MessageListView : ConstraintLayout {
             }
 
             // Some IDs bellow the gap may not be in MessageListView. They may be filtered out.
-            val firstIdAboveGap = messagesAboveGap?.lastOrNull(allIds::contains)
+            val firstIdAboveGap = messageIdsAboveGap?.lastOrNull(allIds::contains)
 
             firstMessageAboveGapPosition = messageList
                 .indexOfFirst { messageListItem ->
@@ -698,15 +701,19 @@ public class MessageListView : ConstraintLayout {
     }
 
     private fun updateMessageBellowGap() {
-        if (this.hasGap == true && messagesBellowGap != null) {
+        if (this.hasGap == true && messageIdsBellowGap != null) {
             val messageList = adapter.currentList
 
             val allIds = messageList.map { messageListItem ->
                 messageListItem.getStableId()
             }
 
+            val lastBellow = messagesBellowGap!!.first()
+
+            Log.d("MessageListView", "Last message bellow gap: ${lastBellow.id}|${lastBellow.text}|${lastBellow.createdAt} ")
+
             // Some IDs bellow the gap may not be in MessageListView. They may be filtered out.
-            val firstIdBellowGap = messagesBellowGap?.lastOrNull(allIds::contains)
+            val firstIdBellowGap = messageIdsBellowGap?.firstOrNull(allIds::contains)
 
             lastMessageBellowGapPosition = messageList
                 .indexOfFirst { messageListItem ->
@@ -717,6 +724,8 @@ public class MessageListView : ConstraintLayout {
                 lastMessageBellowGap =
                     (messageList[lastMessageBellowGapPosition!!] as MessageListItem.MessageItem).message
             }
+
+            Log.d("MessageListView", "Last message at index: $lastMessageBellowGapPosition. In total of: ${messageList.size}. lastMessageBellowGap: ${lastMessageBellowGap?.text}|${lastMessageBellowGap?.createdAt}")
 
             scrollListener.lastMessageBellowGapPosition = lastMessageBellowGapPosition
         }
