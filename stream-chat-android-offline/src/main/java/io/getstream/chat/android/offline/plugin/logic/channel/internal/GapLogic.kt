@@ -69,8 +69,6 @@ internal class GapLogic(private val mutableState: ChannelMutableState) {
         moreMessagesAvailable: Boolean,
         newMessages: List<Message>,
     ) {
-        mutableState._endOfOlderMessages.value = !moreMessagesAvailable
-
         when {
             /* The messages list has gaps but the end of messages of an overlap was found.
              * The message list is linear again. */
@@ -132,15 +130,19 @@ internal class GapLogic(private val mutableState: ChannelMutableState) {
             }
 
             else -> {
-                Log.d("GapLogic", "No messages were updated at the gap!. hasGaps: $hasGap, has divisor: ${gapDivisor != null}")
+                Log.d("GapLogic",
+                    "No messages were updated at the gap!. hasGaps: $hasGap, has divisor: ${gapDivisor != null}")
             }
         }
     }
 
     private fun addNewerGapMessages(gapDivisor: Message?, newMessages: List<Message>) {
         if (gapDivisor != null) {
-            val aboveGap = newMessages.filter { message -> message.createdAt?.after(gapDivisor.createdAt) == true }
-                .map { message -> message.id.hashCode().toLong() }
+            val aboveGap = newMessages.filter { message ->
+                message.createdAt?.after(gapDivisor.createdAt) == true && message != gapDivisorMessage
+            }.map { message ->
+                message.id.hashCode().toLong()
+            }
 
             messageIdsAboveGap.addAll(aboveGap)
         }
