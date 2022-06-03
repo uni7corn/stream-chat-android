@@ -138,13 +138,16 @@ internal class GapLogic(private val mutableState: ChannelMutableState) {
 
     private fun addNewerGapMessages(gapDivisor: Message?, newMessages: List<Message>) {
         if (gapDivisor != null) {
-            val aboveGap = newMessages.filter { message ->
+            val filtered = newMessages.filter { message ->
                 message.createdAt?.after(gapDivisor.createdAt) == true && message != gapDivisorMessage
-            }.map { message ->
+            }
+
+            val ids = filtered.map { message ->
                 message.id.hashCode().toLong()
             }
 
-            messageIdsAboveGap.addAll(aboveGap)
+            messagesBellowGap.addAll(filtered)
+            messageIdsBellowGap.addAll(ids)
         }
     }
 
