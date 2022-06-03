@@ -57,7 +57,6 @@ internal class GapLogicTest {
         gapInfo `should be equal to` expectedGapInfo
     }
 
-
     @Test
     fun `given there's no gap messages should always be added bellow gap messages with list of messages`() {
         val state = ChannelMutableState(channelType, channelId, scope, userFlow, MutableStateFlow(mapOf()))
@@ -152,8 +151,67 @@ internal class GapLogicTest {
 
     @Test
     fun `given more older messages are loaded to fill gap, the oldest should always be the first`() {
-        //Todo: Implement this!!
+        val state = ChannelMutableState(channelType, channelId, scope, userFlow, MutableStateFlow(mapOf()))
+        val gapLogic = GapLogic(state)
+
+        state.gapsInMessageList.value?.first `should be` null
+
+        val olderMessage = olderMessage()
+        val oldestMessage = oldestMessage()
+
+        val messageList = listOf(randomMessage(), randomMessage(), randomMessage(), randomMessage())
+        val messageList1 = listOf(randomMessage(), randomMessage(), randomMessage(), randomMessage())
+        val messageList2 = listOf(randomMessage(), randomMessage(), randomMessage(), olderMessage)
+        val messageList3 = listOf(randomMessage(), randomMessage(), randomMessage(), oldestMessage)
+
+        gapLogic.handleNewerMessagesLimit(true, messageList, true)
+
+        state.gapsInMessageList.value?.first `should be` true
+
+        gapLogic.handleOlderMessagesLimit(true, messageList1)
+        gapLogic.handleOlderMessagesLimit(true, messageList2)
+
+        state.gapsInMessageList.value?.first `should be` true
+        val lastMessageBellowGap = state.gapsInMessageList.value?.second?.messageIdsBellowGap?.last()
+        lastMessageBellowGap `should be equal to` olderMessage.id.hashCode().toLong()
+
+        gapLogic.handleOlderMessagesLimit(true, messageList3)
+
+        val lastMessageBellowGap2 = state.gapsInMessageList.value?.second?.messageIdsBellowGap?.last()
+        lastMessageBellowGap2 `should be equal to` oldestMessage.id.hashCode().toLong()
     }
+    //
+    // @Test
+    // fun `given more newer messages are loaded to fill gap, the newest should always be the last`() {
+    //     val state = ChannelMutableState(channelType, channelId, scope, userFlow, MutableStateFlow(mapOf()))
+    //     val gapLogic = GapLogic(state)
+    //
+    //     state.gapsInMessageList.value?.first `should be` null
+    //
+    //     val olderMessage = olderMessage()
+    //     val oldestMessage = oldestMessage()
+    //
+    //     val messageList = listOf(randomMessage(), randomMessage(), randomMessage(), randomMessage())
+    //     val messageList1 = listOf(randomMessage(), randomMessage(), randomMessage(), randomMessage())
+    //     val messageList2 = listOf(randomMessage(), randomMessage(), randomMessage(), olderMessage)
+    //     val messageList3 = listOf(randomMessage(), randomMessage(), randomMessage(), oldestMessage)
+    //
+    //     gapLogic.handleNewerMessagesLimit(true, messageList, true)
+    //
+    //     state.gapsInMessageList.value?.first `should be` true
+    //
+    //     gapLogic.handleOlderMessagesLimit(true, messageList1)
+    //     gapLogic.handleOlderMessagesLimit(true, messageList2)
+    //
+    //     state.gapsInMessageList.value?.first `should be` true
+    //     val lastMessageBellowGap = state.gapsInMessageList.value?.second?.messageIdsBellowGap?.last()
+    //     lastMessageBellowGap `should be equal to` olderMessage.id.hashCode().toLong()
+    //
+    //     gapLogic.handleOlderMessagesLimit(true, messageList3)
+    //
+    //     val lastMessageBellowGap2 = state.gapsInMessageList.value?.second?.messageIdsBellowGap?.last()
+    //     lastMessageBellowGap2 `should be equal to` oldestMessage.id.hashCode().toLong()
+    // }
 
     private fun nowMessage() = randomMessage(createdAt = Date())
     private fun olderMessage() = randomMessage(createdAt = Date(100))

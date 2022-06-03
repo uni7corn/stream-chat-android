@@ -107,7 +107,7 @@ internal class GapLogic(private val mutableState: ChannelMutableState) {
         when {
             hasGap == true && gapDivisor != null -> {
                 Log.d("GapLogic", "Adding older gap messages because has gap.")
-                val filtered = newMessages.filter { message -> message.createdAt?.after(gapDivisor.createdAt) == true }
+                val filtered = newMessages.filter { message -> message.createdAt?.before(gapDivisor.createdAt) == true }
                 val bellowGap = filtered.map { message -> message.id.hashCode().toLong() }
 
                 messageIdsBellowGap.addAll(bellowGap)
