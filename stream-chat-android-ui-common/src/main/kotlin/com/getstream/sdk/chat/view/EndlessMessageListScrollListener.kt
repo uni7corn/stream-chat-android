@@ -16,6 +16,7 @@
 
 package com.getstream.sdk.chat.view
 
+import android.util.Log
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.util.Date
@@ -125,7 +126,11 @@ public class EndlessMessageListScrollListener(
         val limitStart = firstMessageAfterGap - loadMoreThreshold
         val limitEnd = limitStart + DEFAULT_BOTTOM_TRIGGER_LIMIT
 
-        return lastVisible in limitStart until limitEnd
+        return lastVisible in limitStart until limitEnd.also {
+            if (lastVisible > limitEnd) {
+                Log.d("EndlessScroll", "You're after the bottom limit of the gap")
+            }
+        }
     }
 
     /**

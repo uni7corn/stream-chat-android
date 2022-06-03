@@ -16,6 +16,7 @@
 
 package io.getstream.chat.android.offline.plugin.logic.channel.internal
 
+import android.util.Log
 import io.getstream.chat.android.client.ChatClient
 import io.getstream.chat.android.client.api.models.Pagination
 import io.getstream.chat.android.client.api.models.QueryChannelRequest
@@ -216,6 +217,12 @@ internal class ChannelLogic(
             mutableState.gapsInMessageList.value?.first == true &&
                 (!moreMessagesAvailable || newMessages.hasMessageOverlap(gapSideMessages)) -> {
                 gapDivisorMessage = null
+
+                Log.d("ChannelLogic", "Gap has been closed. " +
+                    "Has overlap: ${mutableState.gapsInMessageList.value?.first == true}. " +
+                    "More messages available: $moreMessagesAvailable. " +
+                    "Overlap: ${newMessages.hasMessageOverlap(gapSideMessages)}"
+                )
 
                 mutableState._gapsInMessageList.value = false to null
                 messageIdsBellowGap.clear()
