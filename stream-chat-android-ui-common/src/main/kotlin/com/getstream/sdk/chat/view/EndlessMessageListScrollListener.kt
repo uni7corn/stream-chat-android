@@ -136,11 +136,11 @@ public class EndlessMessageListScrollListener(
         val limitEnd = firstMessageBellowGap + loadMoreThreshold
         val limitStart = limitEnd - DEFAULT_BOTTOM_TRIGGER_LIMIT
 
-        // Log.d("EndlessScroll", "Handling gap top --------")
-        // Log.d("EndlessScroll", "firstVisible: $firstVisible")
-        // Log.d("EndlessScroll", "limitStart: $limitStart")
-        // Log.d("EndlessScroll", "limitEnd: $limitEnd")
-        // Log.d("EndlessScroll", "firstMessageBellowGap: $firstMessageBellowGap")
+        Log.d("EndlessScroll", "Handling gap top --------")
+        Log.d("EndlessScroll", "firstVisible: $firstVisible")
+        Log.d("EndlessScroll", "limitStart: $limitStart")
+        Log.d("EndlessScroll", "limitEnd: $limitEnd")
+        Log.d("EndlessScroll", "firstMessageBellowGap: $firstMessageBellowGap")
 
         return firstVisible in limitStart until limitEnd
     }

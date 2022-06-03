@@ -168,14 +168,24 @@ internal class GapLogicTest {
 
         state.gapsInMessageList.value?.first `should be` null
 
-        val olderMessage = olderMessage()
-        val oldestMessage = oldestMessage()
+        val olderMessage = randomMessage(createdAt = daysDayAfterNow(12))
+        val oldestMessage = randomMessage(createdAt = daysDayAfterNow(7))
 
         val olderMessages = olderMessagesList(size = 5, offset = 1)
         val messageList = newerMessagesList(size = 5, offset = 1)
-        val messageList1 = listOf(randomMessage(), randomMessage(), randomMessage(), randomMessage())
-        val messageList2 = listOf(randomMessage(), randomMessage(), randomMessage(), olderMessage)
-        val messageList3 = listOf(randomMessage(), randomMessage(), randomMessage(), oldestMessage)
+        val messageList1 = newerMessagesList(5, offset = 6)
+        val messageList2 = listOf(
+            randomMessage(createdAt = daysDayAfterNow(15)),
+            randomMessage(createdAt = daysDayAfterNow(14)),
+            randomMessage(createdAt = daysDayAfterNow(13)),
+            olderMessage
+        )
+        val messageList3 = listOf(
+            randomMessage(createdAt = daysDayAfterNow(11)),
+            randomMessage(createdAt = daysDayAfterNow(10)),
+            randomMessage(createdAt = daysDayAfterNow(9)),
+            oldestMessage
+        )
 
         gapLogic.handleOlderMessagesLimit(true, olderMessages)
         gapLogic.handleNewerMessagesLimit(true, messageList, true)
@@ -192,6 +202,7 @@ internal class GapLogicTest {
         gapLogic.handleOlderMessagesLimit(true, messageList3)
 
         val lastMessageBellowGap2 = state.gapsInMessageList.value?.second?.messageIdsBellowGap?.last()
+        state.gapsInMessageList.value?.first `should be` true
         lastMessageBellowGap2 `should be equal to` oldestMessage.id.hashCode().toLong()
     }
 
@@ -238,6 +249,26 @@ internal class GapLogicTest {
 
         val lastMessageBellowGap2 = state.gapsInMessageList.value?.second?.messageIdsBellowGap?.last()
         lastMessageBellowGap2 `should be equal to` newestMessage.id.hashCode().toLong()
+    }
+
+    @Test
+    fun `given a gap a in older messages happened, a gap should be considered as closed`() {
+        val state = ChannelMutableState(channelType, channelId, scope, userFlow, MutableStateFlow(mapOf()))
+        val gapLogic = GapLogic(state)
+
+        state.gapsInMessageList.value?.first `should be` null
+
+        val messageList = olderMessagesList(4, 0)
+        val messageList1 = newerMessagesList(4, 0)
+
+        gapLogic.handleOlderMessagesLimit(true, messageList)
+        gapLogic.handleNewerMessagesLimit(true, messageList1, true)
+
+        state.gapsInMessageList.value?.first `should be` true
+
+        gapLogic.handleOlderMessagesLimit(true, messageList)
+
+        state.gapsInMessageList.value?.first `should be` false
     }
 
     private fun nowMessage() = randomMessage(createdAt = Date())

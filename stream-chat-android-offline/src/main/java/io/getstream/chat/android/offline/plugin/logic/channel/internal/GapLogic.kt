@@ -27,7 +27,7 @@ internal class GapLogic(private val mutableState: ChannelMutableState) {
             /* The messages list has gaps but the end of messages of an overlap was found.
              * The message list is linear again. */
             mutableState.gapsInMessageList.value?.first == true &&
-                (!moreMessagesAvailable || newMessages.hasMessageOverlap(messageIdsAboveGap)) -> {
+                (!moreMessagesAvailable || newMessages.hasMessageOverlap(messageIdsBellowGap)) -> {
 
                 Log.d("GapLogic", "A gap has closed in new messages!!")
                 gapDivisorMessage = null
@@ -40,7 +40,7 @@ internal class GapLogic(private val mutableState: ChannelMutableState) {
              * messages nor has an overlap between messages, the list is  not linear anymore. */
             mutableState.gapsInMessageList.value?.first != true &&
                 moreMessagesAvailable &&
-                !newMessages.hasMessageOverlap(messageIdsAboveGap) &&
+                !newMessages.hasMessageOverlap(messageIdsBellowGap) &&
                 canCreateGap -> {
                 Log.d("GapLogic", "A gap has started in new messages!!")
 
@@ -84,6 +84,7 @@ internal class GapLogic(private val mutableState: ChannelMutableState) {
             // Has gaps and loading more messages
             mutableState._gapsInMessageList.value?.first == true -> {
                 Log.d("GapLogic", "has gaps and loading more messages")
+
                 addOlderGapMessages(gapDivisorMessage, newMessages)
                 mutableState._gapsInMessageList.value =
                     true to MessagesGapInfo(messageIdsAboveGap, messageIdsBellowGap, messagesBellowGap)
@@ -107,15 +108,15 @@ internal class GapLogic(private val mutableState: ChannelMutableState) {
         when {
             hasGap == true && gapDivisor != null -> {
                 Log.d("GapLogic", "Adding older gap messages because has gap.")
-                val filtered = newMessages.filter { message -> message.createdAt?.before(gapDivisor.createdAt) == true }
+                val filtered = newMessages.filter { message -> message.createdAt?.after(gapDivisor.createdAt) == true }
                 val bellowGap = filtered.map { message -> message.id.hashCode().toLong() }
 
                 messageIdsBellowGap.addAll(bellowGap)
                 messagesBellowGap.addAll(filtered)
 
-                val joint = messagesBellowGap.joinToString { message -> "${message.createdAt}" }
                 Log.d("GapLogic", "Gap divisor: ${gapDivisor.createdAt}")
-                Log.d("GapLogic", "All messages bellow gap: $joint")
+                // val joint = messagesBellowGap.joinToString { message -> "${message.createdAt}" }
+                // Log.d("GapLogic", "All messages bellow gap: $joint")
             }
 
             hasGap != true -> {
@@ -124,9 +125,8 @@ internal class GapLogic(private val mutableState: ChannelMutableState) {
                 messageIdsBellowGap.addAll(bellowGap)
                 messagesBellowGap.addAll(newMessages)
 
-                val joint = messagesBellowGap.joinToString { message -> "${message.text}|${message.createdAt}" }
-
-                Log.d("GapLogic", "All messages bellow gap: $joint")
+                // val joint = messagesBellowGap.joinToString { message -> "${message.text}|${message.createdAt}" }
+                // Log.d("GapLogic", "All messages bellow gap: $joint")
             }
 
             else -> {
