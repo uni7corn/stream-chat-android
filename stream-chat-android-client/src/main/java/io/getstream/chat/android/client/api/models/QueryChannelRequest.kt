@@ -22,6 +22,12 @@ public open class QueryChannelRequest : ChannelRequest<QueryChannelRequest> {
     override var state: Boolean = false
     override var watch: Boolean = false
     override var presence: Boolean = false
+
+    /**
+     * This field defines if the request can create a gap in the messages. That normally happen when loading messages
+     * that are not right after the last message in the search. Example: When you're searching for messages in the
+     * SDK.
+     */
     override var canCreateGap: Boolean = false
 
     public val messages: MutableMap<String, Any> = mutableMapOf()

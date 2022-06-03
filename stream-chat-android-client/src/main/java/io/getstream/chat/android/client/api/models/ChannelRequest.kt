@@ -22,6 +22,12 @@ internal interface ChannelRequest<T : ChannelRequest<T>> {
     var state: Boolean
     var watch: Boolean
     var presence: Boolean
+
+    /**
+     * This field defines if the request can create a gap in the messages. That normally happen when loading messages
+     * that are not right after the last message in the search. Example: When you're searching for messages in the
+     * SDK.
+     */
     var canCreateGap: Boolean
 
     fun withWatch(): T {

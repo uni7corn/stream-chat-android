@@ -242,6 +242,7 @@ internal class ChannelLogic(
      *
      * @param messageId Id of message after which to fetch messages.
      * @param limit Number of messages to fetch after this message.
+     * @param canCreateGap Flag to notify if this request can create a gap in the message list.
      *
      * @return [Result] of [Channel] with fetched messages.
      */

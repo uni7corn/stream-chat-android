@@ -40,6 +40,12 @@ public data class QueryChannelsRequest(
     override var state: Boolean = true
     override var watch: Boolean = true
     override var presence: Boolean = false
+
+    /**
+     * This field defines if the request can create a gap in the messages. That normally happen when loading messages
+     * that are not right after the last message in the search. Example: When you're searching for messages in the
+     * SDK.
+     */
     override var canCreateGap: Boolean = false
 
     /**
