@@ -124,6 +124,7 @@ import io.getstream.chat.android.ui.utils.extensions.isCurrentUserBanned
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Date
 
 /**
  * MessageListView renders a list of messages and extends the [RecyclerView]
@@ -151,6 +152,9 @@ public class MessageListView : ConstraintLayout {
     private lateinit var emptyStateView: View
     private lateinit var emptyStateViewContainer: ViewGroup
     private lateinit var scrollHelper: MessageListScrollHelper
+
+    private var lastSearch: Date? = null
+    private var shouldCleanMessages = false
 
     /**
      * Used to enable or disable parts of the UI depending
@@ -680,6 +684,14 @@ public class MessageListView : ConstraintLayout {
         scrollHelper.scrollToMessage(message)
     }
 
+    public fun updateLastSearch(date: Date) {
+        if (lastSearch?.after(date) == true) {
+            shouldCleanMessages = true
+        }
+
+        lastSearch = date
+    }
+
     private fun setMessageListItemAdapter(adapter: MessageListItemAdapter) {
         binding.chatMessagesRV.addOnScrollListener(loadMoreListener)
         /*
@@ -1100,6 +1112,11 @@ public class MessageListView : ConstraintLayout {
                     messageListViewStyle?.threadMessagesStart?.let(::chatMessageStart)
                 } else if (isNormalModeStart) {
                     messageListViewStyle?.messagesStart?.let(::chatMessageStart)
+                }
+
+                if (shouldCleanMessages) {
+                    adapter.currentList.clear()
+                    shouldCleanMessages = false
                 }
 
                 adapter.submitList(filteredList) {
