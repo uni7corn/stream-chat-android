@@ -39,7 +39,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.Text
-import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -81,7 +81,7 @@ class LoginActivity : AppCompatActivity() {
     private fun LoginScreen() {
         Column(
             modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             var selectedSdkType by remember { mutableStateOf(SdkType.UI_COMPONENTS) }
 
@@ -90,7 +90,7 @@ class LoginActivity : AppCompatActivity() {
             SdkTypeList(
                 modifier = Modifier.fillMaxWidth(),
                 sdkType = selectedSdkType,
-                onSdkTypeClick = { selectedSdkType = it }
+                onSdkTypeClick = { selectedSdkType = it },
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -102,9 +102,9 @@ class LoginActivity : AppCompatActivity() {
                 onUserCredentialsClick = { userCredentials ->
                     login(
                         userCredentials = userCredentials,
-                        sdkType = selectedSdkType
+                        sdkType = selectedSdkType,
                     )
-                }
+                },
             )
         }
     }
@@ -142,11 +142,11 @@ class LoginActivity : AppCompatActivity() {
                         ),
                         onClick = {
                             onSdkTypeClick(type)
-                        }
+                        },
                     ) {
                         Text(
                             modifier = Modifier.padding(8.dp),
-                            text = type.value
+                            text = type.value,
                         )
                     }
                 }
@@ -173,8 +173,8 @@ class LoginActivity : AppCompatActivity() {
                         .height(64.dp)
                         .clickable(
                             onClick = { onUserCredentialsClick(userCredentials) },
-                            indication = rememberRipple(),
-                            interactionSource = remember { MutableInteractionSource() }
+                            indication = ripple(),
+                            interactionSource = remember { MutableInteractionSource() },
                         )
                         .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -192,7 +192,7 @@ class LoginActivity : AppCompatActivity() {
                         text = userCredentials.user.name,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = ChatTheme.colors.textHighEmphasis
+                        color = ChatTheme.colors.textHighEmphasis,
                     )
                 }
 
@@ -200,7 +200,7 @@ class LoginActivity : AppCompatActivity() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(0.5.dp)
-                        .background(color = ChatTheme.colors.borders)
+                        .background(color = ChatTheme.colors.borders),
                 )
             }
         }
@@ -215,7 +215,7 @@ class LoginActivity : AppCompatActivity() {
     private fun login(userCredentials: UserCredentials, sdkType: SdkType) {
         ChatClient.instance().connectUser(
             user = userCredentials.user,
-            token = userCredentials.token
+            token = userCredentials.token,
         ).enqueue()
 
         val intent = when (sdkType) {

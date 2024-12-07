@@ -11,6 +11,7 @@ import io.getstream.chat.android.client.events.NewMessageEvent
 import io.getstream.chat.android.client.events.UserPresenceChangedEvent
 import io.getstream.chat.android.client.subscribeFor
 import io.getstream.chat.android.client.subscribeForSingle
+import io.getstream.result.Result
 import io.getstream.chat.android.client.utils.observable.Disposable
 
 class Events(val client: ChatClient, val channelClient: ChannelClient) {
@@ -38,6 +39,7 @@ class Events(val client: ChatClient, val channelClient: ChannelClient) {
                     is NewMessageEvent -> {
                         val message = event.message
                     }
+                    else -> Unit
                 }
             }
 
@@ -59,6 +61,7 @@ class Events(val client: ChatClient, val channelClient: ChannelClient) {
                 // Use event data
                 val unreadCount = event.me.totalUnreadCount
                 val unreadChannels = event.me.unreadChannels
+                val unreadThreads = event.me.unreadThreads
             }
         }
 
@@ -81,6 +84,7 @@ class Events(val client: ChatClient, val channelClient: ChannelClient) {
                     is DisconnectedEvent -> {
                         // Socket is disconnected
                     }
+                    else -> Unit
                 }
             }
         }
@@ -108,10 +112,13 @@ class Events(val client: ChatClient, val channelClient: ChannelClient) {
                 eventType = "friendship_request",
                 extraData = mapOf("text" to "Hey there, long time no see!")
             ).enqueue { result ->
-                if (result.isSuccess) {
-                    val chatEvent: ChatEvent = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val chatEvent: ChatEvent = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }

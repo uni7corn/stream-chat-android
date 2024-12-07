@@ -16,11 +16,11 @@
 
 package io.getstream.chat.android.offline.repository.domain.queryChannels.internal
 
-import io.getstream.chat.android.client.api.models.FilterObject
-import io.getstream.chat.android.client.api.models.querysort.QuerySorter
-import io.getstream.chat.android.client.models.Channel
 import io.getstream.chat.android.client.persistance.repository.QueryChannelsRepository
 import io.getstream.chat.android.client.query.QueryChannelsSpec
+import io.getstream.chat.android.models.Channel
+import io.getstream.chat.android.models.FilterObject
+import io.getstream.chat.android.models.querysort.QuerySorter
 
 /**
  * Repository for queries of channels. This implementation uses the database.
@@ -48,6 +48,10 @@ internal class DatabaseQueryChannelsRepository(
         return queryChannelsDao.select(generateId(filter, querySort))?.let(Companion::toModel)
     }
 
+    override suspend fun clear() {
+        queryChannelsDao.deleteAll()
+    }
+
     private companion object {
         private fun generateId(filter: FilterObject, querySort: QuerySorter<Channel>): String {
             return "${filter.hashCode()}-${querySort.toDto().hashCode()}"
@@ -58,13 +62,13 @@ internal class DatabaseQueryChannelsRepository(
                 generateId(queryChannelsSpec.filter, queryChannelsSpec.querySort),
                 queryChannelsSpec.filter,
                 queryChannelsSpec.querySort,
-                queryChannelsSpec.cids.toList()
+                queryChannelsSpec.cids.toList(),
             )
 
         private fun toModel(queryChannelsEntity: QueryChannelsEntity): QueryChannelsSpec =
             QueryChannelsSpec(
                 queryChannelsEntity.filter,
-                queryChannelsEntity.querySort
+                queryChannelsEntity.querySort,
             ).apply { cids = queryChannelsEntity.cids.toSet() }
     }
 }

@@ -16,60 +16,88 @@
 
 package io.getstream.chat.android.client
 
-import com.flextrade.jfixture.JFixture
-import com.flextrade.kfixture.KFixture
+import io.getstream.chat.android.client.events.ConnectedEvent
 import io.getstream.chat.android.client.events.UserPresenceChangedEvent
-import io.getstream.chat.android.client.models.Attachment
-import io.getstream.chat.android.client.models.Channel
-import io.getstream.chat.android.client.models.Device
-import io.getstream.chat.android.client.models.Message
-import io.getstream.chat.android.client.models.Mute
-import io.getstream.chat.android.client.models.PushProvider
-import io.getstream.chat.android.client.models.User
-import io.getstream.chat.android.test.randomBoolean
+import io.getstream.chat.android.client.logger.ChatLogLevel
+import io.getstream.chat.android.client.logger.ChatLoggerConfig
+import io.getstream.chat.android.client.logger.ChatLoggerHandler
+import io.getstream.chat.android.client.network.NetworkStateProvider
+import io.getstream.chat.android.client.parser2.adapters.internal.StreamDateFormatter
+import io.getstream.chat.android.client.setup.state.internal.MutableClientState
+import io.getstream.chat.android.client.socket.ChatSocketStateService
+import io.getstream.chat.android.client.socket.SocketFactory
+import io.getstream.chat.android.models.ConnectionState
+import io.getstream.chat.android.models.InitializationState
+import io.getstream.chat.android.models.User
+import io.getstream.chat.android.randomBoolean
+import io.getstream.chat.android.randomDate
+import io.getstream.chat.android.randomString
+import io.getstream.chat.android.randomUser
+import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
-import java.util.UUID
+import org.mockito.kotlin.whenever
+import java.util.Date
 
 internal object Mother {
-    private val fixture: JFixture
-        get() = JFixture()
+    private val streamDateFormatter = StreamDateFormatter()
 
-    fun randomAttachment(attachmentBuilder: Attachment.() -> Unit = { }): Attachment {
-        return KFixture(fixture) {
-            sameInstance(Attachment.UploadState::class.java, Attachment.UploadState.Success)
-        } <Attachment>().apply(attachmentBuilder)
-    }
-
-    fun randomChannel(channelBuilder: Channel.() -> Unit = { }): Channel {
-        return KFixture(fixture) {
-            sameInstance(Mute::class.java, mock())
-            sameInstance(Message::class.java, mock())
-            sameInstance(Attachment.UploadState::class.java, Attachment.UploadState.Success)
-        } <Channel>().apply(channelBuilder)
-    }
-
-    fun randomUser(userBuilder: User.() -> Unit = { }): User {
-        return KFixture(fixture) {
-            sameInstance(Mute::class.java, mock())
-        } <User>().apply(userBuilder)
-    }
-
-    fun randomString(): String = UUID.randomUUID().toString()
-
-    fun randomDevice(
-        token: String = randomString(),
-        pushProvider: PushProvider = PushProvider.values().random(),
-        providerName: String? = randomString().takeIf { randomBoolean() }
-    ): Device =
-        Device(
-            token = token,
-            pushProvider = pushProvider,
-            providerName = providerName,
+    fun randomUserPresenceChangedEvent(
+        type: String = randomString(),
+        createdAt: Date = randomDate(),
+        rawCreatedAt: String = randomString(),
+        user: User = randomUser(),
+    ): UserPresenceChangedEvent =
+        UserPresenceChangedEvent(
+            type = type,
+            createdAt = createdAt,
+            rawCreatedAt = rawCreatedAt,
+            user = user,
         )
 
-    fun randomUserPresenceChangedEvent(user: User = randomUser()): UserPresenceChangedEvent {
-        return KFixture(fixture) {
-            sameInstance(User::class.java, user)
-        }()
+    fun randomUserConnectionConf(
+        endpoint: String = randomString(),
+        apiKey: String = randomString(),
+        user: User = randomUser(),
+    ) = SocketFactory.ConnectionConf.UserConnectionConf(endpoint, apiKey, user)
+
+    fun randomAnonymousConnectionConf(
+        endpoint: String = randomString(),
+        apiKey: String = randomString(),
+        user: User = randomUser(),
+    ) = SocketFactory.ConnectionConf.UserConnectionConf(endpoint, apiKey, user)
+
+    fun randomConnectionConf(
+        endpoint: String = randomString(),
+        apiKey: String = randomString(),
+        user: User = randomUser(),
+    ) = when (randomBoolean()) {
+        true -> randomAnonymousConnectionConf(endpoint, apiKey, user)
+        false -> randomUserConnectionConf(endpoint, apiKey, user)
+    }
+
+    fun mockedClientState(): MutableClientState {
+        val networkStatProvider: NetworkStateProvider = mock()
+        whenever(networkStatProvider.isConnected()) doReturn true
+        return MutableClientState(networkStatProvider).apply {
+            setConnectionState(ConnectionState.Connected)
+            setInitializationState(InitializationState.COMPLETE)
+        }
+    }
+
+    fun randomConnectionType(): ChatSocketStateService.ConnectionType =
+        ChatSocketStateService.ConnectionType.values().random()
+
+    fun chatLoggerConfig(): ChatLoggerConfig = object : ChatLoggerConfig {
+        override val level: ChatLogLevel = ChatLogLevel.NOTHING
+        override val handler: ChatLoggerHandler? = null
+    }
+
+    fun randomConnectedEvent(
+        type: String = randomString(),
+        createdAt: Date = randomDate(),
+        me: User = randomUser(),
+        connectionId: String = randomString(),
+    ): ConnectedEvent {
+        return ConnectedEvent(type, createdAt, streamDateFormatter.format(createdAt), me, connectionId)
     }
 }

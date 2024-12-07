@@ -17,37 +17,38 @@
 package io.getstream.chat.android.client.api2.mapping
 
 import io.getstream.chat.android.client.api2.model.dto.DownstreamChannelDto
-import io.getstream.chat.android.client.api2.model.dto.DownstreamChannelUserRead
-import io.getstream.chat.android.client.api2.model.dto.DownstreamMemberDto
-import io.getstream.chat.android.client.api2.model.dto.DownstreamMessageDto
-import io.getstream.chat.android.client.api2.model.dto.DownstreamUserDto
-import io.getstream.chat.android.client.models.Channel
-import io.getstream.chat.android.client.models.User
+import io.getstream.chat.android.client.extensions.syncUnreadCountWithReads
+import io.getstream.chat.android.models.Channel
+import io.getstream.chat.android.models.User
+import io.getstream.chat.android.models.UserId
+import java.util.Date
 
-internal fun DownstreamChannelDto.toDomain(): Channel =
+internal fun DownstreamChannelDto.toDomain(
+    currentUserId: UserId?,
+    eventChatLastMessageAt: Date?,
+): Channel =
     Channel(
-        cid = cid,
         id = id,
         type = type,
         name = name ?: "",
         image = image ?: "",
         watcherCount = watcher_count,
         frozen = frozen,
-        lastMessageAt = last_message_at,
+        channelLastMessageAt = eventChatLastMessageAt ?: last_message_at,
         createdAt = created_at,
         deletedAt = deleted_at,
         updatedAt = updated_at,
         memberCount = member_count,
-        messages = messages.map(DownstreamMessageDto::toDomain),
-        members = members.map(DownstreamMemberDto::toDomain),
-        watchers = watchers.map(DownstreamUserDto::toDomain),
-        read = read.map(DownstreamChannelUserRead::toDomain),
+        messages = messages.map { it.toDomain(currentUserId) },
+        members = members.map { it.toDomain(currentUserId) },
+        watchers = watchers.map { it.toDomain(currentUserId) },
+        read = read.map { it.toDomain(currentUserId, last_message_at ?: it.last_read) },
         config = config.toDomain(),
-        createdBy = created_by?.toDomain() ?: User(),
+        createdBy = created_by?.toDomain(currentUserId) ?: User(),
         team = team,
         cooldown = cooldown,
-        pinnedMessages = pinned_messages.map(DownstreamMessageDto::toDomain),
+        pinnedMessages = pinned_messages.map { it.toDomain(currentUserId) },
         ownCapabilities = own_capabilities.toSet(),
-        membership = membership?.toDomain(),
+        membership = membership?.toDomain(currentUserId),
         extraData = extraData.toMutableMap(),
-    )
+    ).syncUnreadCountWithReads()

@@ -19,39 +19,37 @@
 package io.getstream.chat.android.test
 
 import io.getstream.chat.android.core.internal.coroutines.DispatcherProvider
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.TestDispatcher
-import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.rules.TestWatcher
 import org.junit.runner.Description
 
 public class TestCoroutineRule : TestWatcher() {
 
-    public val testDispatcher: TestDispatcher = UnconfinedTestDispatcher()
-    public val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    @OptIn(ExperimentalCoroutinesApi::class)
+    public val testDispatcher: TestDispatcher = UnconfinedTestDispatcher(TestCoroutineScheduler())
     public val scope: TestScope = TestScope(testDispatcher)
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     override fun starting(description: Description) {
         super.starting(description)
         Dispatchers.setMain(testDispatcher)
         DispatcherProvider.set(
             mainDispatcher = testDispatcher,
-            ioDispatcher = testDispatcher
+            ioDispatcher = testDispatcher,
         )
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     override fun finished(description: Description) {
         super.finished(description)
         Dispatchers.resetMain()
         DispatcherProvider.reset()
     }
 }
-
-public fun TestCoroutineRule.runTest(testBody: suspend TestScope.() -> Unit): TestResult =
-    scope.runTest(testBody = testBody)

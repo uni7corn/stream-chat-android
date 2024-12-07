@@ -22,10 +22,11 @@ import io.getstream.chat.android.client.events.ChannelUpdatedEvent
 import io.getstream.chat.android.client.events.ChatEvent
 import io.getstream.chat.android.client.events.ConnectedEvent
 import io.getstream.chat.android.client.events.NewMessageEvent
-import io.getstream.chat.android.client.models.Channel
-import io.getstream.chat.android.client.models.EventType
-import io.getstream.chat.android.client.models.Message
-import io.getstream.chat.android.client.models.User
+import io.getstream.chat.android.client.parser2.adapters.internal.StreamDateFormatter
+import io.getstream.chat.android.models.Channel
+import io.getstream.chat.android.models.EventType
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.models.User
 import org.amshove.kluent.shouldBeEqualTo
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -44,27 +45,36 @@ internal class ChannelClientSubscribeTest {
         const val OTHER_CHANNEL_ID = "my-game"
         const val OTHER_CID = "$OTHER_CHANNEL_TYPE:$OTHER_CHANNEL_ID"
 
-        val NON_CHANNEL_EVENT = ConnectedEvent(EventType.HEALTH_CHECK, Date(), User(), "")
+        val streamDateFormatter = StreamDateFormatter()
+
+        val createdAt = Date()
+        val rawCreatedAt = streamDateFormatter.format(createdAt)
+
+        val NON_CHANNEL_EVENT = ConnectedEvent(EventType.HEALTH_CHECK, createdAt, rawCreatedAt, User(), "")
         val CHANNEL_EVENT = ChannelUpdatedEvent(
-            EventType.CHANNEL_UPDATED,
-            Date(),
-            CID,
-            CHANNEL_TYPE,
-            CHANNEL_ID,
-            null,
-            Channel(),
+            type = EventType.CHANNEL_UPDATED,
+            createdAt = createdAt,
+            rawCreatedAt = rawCreatedAt,
+            cid = CID,
+            channelType = CHANNEL_TYPE,
+            channelId = CHANNEL_ID,
+            channel = Channel(),
+            channelLastMessageAt = Date(),
+            message = null,
         )
         val OTHER_CHANNEL_EVENT = NewMessageEvent(
-            EventType.MESSAGE_NEW,
-            Date(),
-            User(),
-            OTHER_CID,
-            OTHER_CHANNEL_TYPE,
-            OTHER_CHANNEL_ID,
-            Message(),
-            0,
-            0,
-            0
+            type = EventType.MESSAGE_NEW,
+            createdAt = createdAt,
+            rawCreatedAt = rawCreatedAt,
+            user = User(),
+            cid = OTHER_CID,
+            channelType = OTHER_CHANNEL_TYPE,
+            channelId = OTHER_CHANNEL_ID,
+            message = Message(),
+            watcherCount = 0,
+            totalUnreadCount = 0,
+            unreadChannels = 0,
+            channelLastMessageAt = Date(),
         )
     }
 
@@ -79,7 +89,7 @@ internal class ChannelClientSubscribeTest {
         channelClient = ChannelClient(
             CHANNEL_TYPE,
             CHANNEL_ID,
-            client
+            client,
         )
         result = mutableListOf()
     }

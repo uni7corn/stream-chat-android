@@ -16,33 +16,45 @@
 
 package io.getstream.chat.android.compose.viewmodel.messages
 
-import com.getstream.sdk.chat.utils.AttachmentConstants
 import io.getstream.chat.android.client.ChatClient
-import io.getstream.chat.android.client.models.Attachment
-import io.getstream.chat.android.client.models.Channel
-import io.getstream.chat.android.client.models.Command
-import io.getstream.chat.android.client.models.Config
-import io.getstream.chat.android.client.models.Member
-import io.getstream.chat.android.client.models.Message
-import io.getstream.chat.android.client.models.User
-import io.getstream.chat.android.common.composer.MessageComposerController
-import io.getstream.chat.android.common.state.Edit
-import io.getstream.chat.android.common.state.MessageMode
-import io.getstream.chat.android.common.state.Reply
-import io.getstream.chat.android.common.state.ThreadReply
-import io.getstream.chat.android.offline.model.channel.ChannelData
-import io.getstream.chat.android.offline.plugin.state.StateRegistry
-import io.getstream.chat.android.offline.plugin.state.channel.ChannelState
-import io.getstream.chat.android.offline.plugin.state.global.internal.GlobalMutableState
+import io.getstream.chat.android.client.channel.state.ChannelState
+import io.getstream.chat.android.client.setup.state.ClientState
+import io.getstream.chat.android.models.App
+import io.getstream.chat.android.models.AppSettings
+import io.getstream.chat.android.models.Attachment
+import io.getstream.chat.android.models.Channel
+import io.getstream.chat.android.models.ChannelData
+import io.getstream.chat.android.models.Command
+import io.getstream.chat.android.models.Config
+import io.getstream.chat.android.models.FileUploadConfig
+import io.getstream.chat.android.models.InitializationState
+import io.getstream.chat.android.models.Member
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.models.User
+import io.getstream.chat.android.positiveRandomLong
+import io.getstream.chat.android.randomString
+import io.getstream.chat.android.state.plugin.config.StatePluginConfig
+import io.getstream.chat.android.state.plugin.factory.StreamStatePluginFactory
+import io.getstream.chat.android.state.plugin.internal.StatePlugin
+import io.getstream.chat.android.state.plugin.state.StateRegistry
+import io.getstream.chat.android.state.plugin.state.global.GlobalState
 import io.getstream.chat.android.test.TestCoroutineExtension
 import io.getstream.chat.android.test.asCall
+import io.getstream.chat.android.ui.common.feature.messages.composer.MessageComposerController
+import io.getstream.chat.android.ui.common.feature.messages.composer.mention.DefaultUserLookupHandler
+import io.getstream.chat.android.ui.common.state.messages.Edit
+import io.getstream.chat.android.ui.common.state.messages.MessageMode
+import io.getstream.chat.android.ui.common.state.messages.Reply
+import io.getstream.chat.android.ui.common.state.messages.ThreadReply
+import io.getstream.chat.android.ui.common.utils.AttachmentConstants
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.amshove.kluent.`should be equal to`
 import org.amshove.kluent.`should be instance of`
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.doReturn
@@ -52,6 +64,7 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 @ExperimentalCoroutinesApi
+@ExtendWith(TestCoroutineExtension::class)
 internal class MessageComposerViewModelTest {
 
     @Test
@@ -85,8 +98,8 @@ internal class MessageComposerViewModelTest {
             viewModel.sendMessage(
                 viewModel.buildNewMessage(
                     message = state.inputValue,
-                    attachments = state.attachments
-                )
+                    attachments = state.attachments,
+                ),
             )
 
             val captor = argumentCaptor<Message>()
@@ -94,7 +107,7 @@ internal class MessageComposerViewModelTest {
                 channelType = eq("messaging"),
                 channelId = eq("123"),
                 message = captor.capture(),
-                isRetrying = eq(false)
+                isRetrying = eq(false),
             )
             captor.firstValue.text `should be equal to` "Message text"
             viewModel.input.value `should be equal to` ""
@@ -114,15 +127,15 @@ internal class MessageComposerViewModelTest {
             viewModel.addSelectedAttachments(
                 listOf(
                     Attachment(imageUrl = "url1"),
-                    Attachment(imageUrl = "url2")
-                )
+                    Attachment(imageUrl = "url2"),
+                ),
             )
             val state = viewModel.messageComposerState.value
             viewModel.sendMessage(
                 viewModel.buildNewMessage(
                     message = state.inputValue,
-                    attachments = state.attachments
-                )
+                    attachments = state.attachments,
+                ),
             )
 
             val captor = argumentCaptor<Message>()
@@ -130,7 +143,7 @@ internal class MessageComposerViewModelTest {
                 channelType = eq("messaging"),
                 channelId = eq("123"),
                 message = captor.capture(),
-                isRetrying = eq(false)
+                isRetrying = eq(false),
             )
             captor.firstValue.attachments.size `should be equal to` 2
             viewModel.selectedAttachments.value.size `should be equal to` 0
@@ -149,11 +162,11 @@ internal class MessageComposerViewModelTest {
             viewModel.addSelectedAttachments(
                 listOf(
                     Attachment(imageUrl = "url1"),
-                    Attachment(imageUrl = "url2")
-                )
+                    Attachment(imageUrl = "url2"),
+                ),
             )
             viewModel.removeSelectedAttachment(
-                Attachment(imageUrl = "url1")
+                Attachment(imageUrl = "url1"),
             )
 
             viewModel.selectedAttachments.value.size `should be equal to` 1
@@ -239,12 +252,12 @@ internal class MessageComposerViewModelTest {
     fun `Given channel state with own capabilities When observing the state Should return the state with own capabilities`() {
         val channelData = ChannelData(
             type = "messaging",
-            channelId = "123",
+            id = "123",
             ownCapabilities = setOf(
                 "send-message",
                 "send-reaction",
-                "send-reply"
-            )
+                "send-reply",
+            ),
         )
         val viewModel = Fixture()
             .givenCurrentUser()
@@ -312,7 +325,10 @@ internal class MessageComposerViewModelTest {
                 .givenChannelState(members = listOf(Member(user = user1), Member(user = user2)))
                 .get()
 
+            // Handling mentions on input changes is debounced so we advance time until idle to make sure
+            // all operations have finished before checking state.
             viewModel.setMessageInput("@")
+            advanceUntilIdle()
 
             viewModel.messageComposerState.value.mentionSuggestions.size `should be equal to` 2
             viewModel.mentionSuggestions.value.size `should be equal to` 2
@@ -327,8 +343,13 @@ internal class MessageComposerViewModelTest {
                 .givenChannelState(members = listOf(Member(user = user1), Member(user = user2)))
                 .get()
 
+            // Handling mentions on input changes is debounced so we advance time until idle to make sure
+            // all operations have finished before checking state.
             viewModel.setMessageInput("@")
+            advanceUntilIdle()
+
             viewModel.selectMention(viewModel.mentionSuggestions.value.first())
+            advanceUntilIdle()
 
             viewModel.messageComposerState.value.mentionSuggestions.size `should be equal to` 0
             viewModel.mentionSuggestions.value.size `should be equal to` 0
@@ -339,74 +360,106 @@ internal class MessageComposerViewModelTest {
         private val chatClient: ChatClient = mock(),
         private val channelId: String = "messaging:123",
         private val maxAttachmentCount: Int = AttachmentConstants.MAX_ATTACHMENTS_COUNT,
-        private val maxAttachmentSize: Long = AttachmentConstants.MAX_UPLOAD_FILE_SIZE,
+        statePluginConfig: StatePluginConfig = StatePluginConfig(),
     ) {
-        private val globalState: GlobalMutableState = mock()
         private val stateRegistry: StateRegistry = mock()
+        private val globalState: GlobalState = mock()
+        private val clientState: ClientState = mock()
+        private val channelState: ChannelState = mock()
+        private val appSettings: AppSettings = AppSettings(
+            app = App(
+                name = randomString(),
+                fileUploadConfig = FileUploadConfig(
+                    allowedFileExtensions = emptyList(),
+                    allowedMimeTypes = emptyList(),
+                    blockedFileExtensions = emptyList(),
+                    blockedMimeTypes = emptyList(),
+                    sizeLimitInBytes = positiveRandomLong(100),
+                ),
+                imageUploadConfig = FileUploadConfig(
+                    allowedFileExtensions = emptyList(),
+                    allowedMimeTypes = emptyList(),
+                    blockedFileExtensions = emptyList(),
+                    blockedMimeTypes = emptyList(),
+                    sizeLimitInBytes = positiveRandomLong(100),
+                ),
+            ),
+        )
 
         init {
-            StateRegistry.instance = stateRegistry
-            GlobalMutableState.instance = globalState
+            val statePlugin: StatePlugin = mock()
+            val statePluginFactory: StreamStatePluginFactory = mock()
+            whenever(statePlugin.resolveDependency(eq(StateRegistry::class))) doReturn stateRegistry
+            whenever(statePlugin.resolveDependency(eq(GlobalState::class))) doReturn globalState
+            whenever(statePluginFactory.resolveDependency(eq(StatePluginConfig::class))) doReturn statePluginConfig
+            whenever(chatClient.plugins) doReturn listOf(statePlugin)
+            whenever(chatClient.pluginFactories) doReturn listOf(statePluginFactory)
+            whenever(chatClient.audioPlayer) doReturn mock()
+            whenever(chatClient.getAppSettings()) doReturn appSettings
         }
 
         fun givenCurrentUser(currentUser: User = user1) = apply {
-            whenever(globalState.user) doReturn MutableStateFlow(currentUser)
+            whenever(clientState.user) doReturn MutableStateFlow(currentUser)
+            whenever(chatClient.clientState) doReturn clientState
+            whenever(clientState.initializationState) doReturn MutableStateFlow(InitializationState.COMPLETE)
         }
 
         fun givenChannelQuery(channel: Channel = Channel()) = apply {
-            whenever(chatClient.queryChannel(any(), any(), any())) doReturn channel.asCall()
+            whenever(chatClient.queryChannel(any(), any(), any(), any())) doReturn channel.asCall()
         }
 
         fun givenChannelState(
             channelData: ChannelData = ChannelData(
                 type = "messaging",
-                channelId = "123",
+                id = "123",
             ),
             config: Config = Config(),
             members: List<Member> = emptyList(),
         ) = apply {
-            val channelState: ChannelState = mock {
-                whenever(it.channelData) doReturn MutableStateFlow(channelData)
-                whenever(it.channelConfig) doReturn MutableStateFlow(config)
-                whenever(it.members) doReturn MutableStateFlow(members)
-            }
+            whenever(channelState.channelData) doReturn MutableStateFlow(channelData)
+            whenever(channelState.lastSentMessageDate) doReturn MutableStateFlow(null)
+            whenever(channelState.channelConfig) doReturn MutableStateFlow(config)
+            whenever(channelState.members) doReturn MutableStateFlow(members)
+            whenever(channelState.membersCount) doReturn MutableStateFlow(members.size)
+
             whenever(stateRegistry.channel(any(), any())) doReturn channelState
         }
 
         fun givenSendMessage(message: Message = Message()) = apply {
             whenever(chatClient.sendMessage(any(), any(), any(), any())) doReturn message.asCall()
+            whenever(chatClient.markMessageRead(any(), any(), any())) doReturn Unit.asCall()
         }
 
         fun get(): MessageComposerViewModel {
             return MessageComposerViewModel(
                 MessageComposerController(
                     chatClient = chatClient,
-                    channelId = channelId,
+                    channelCid = channelId,
+                    mediaRecorder = mock(),
+                    userLookupHandler = DefaultUserLookupHandler(chatClient, channelId),
+                    fileToUri = { it.path },
                     maxAttachmentCount = maxAttachmentCount,
-                    maxAttachmentSize = maxAttachmentSize,
-                )
+                    channelState = MutableStateFlow(channelState),
+                ),
             )
         }
     }
 
     companion object {
-        @JvmField
-        @RegisterExtension
-        val testCoroutines = TestCoroutineExtension()
 
         val user1 = User(
             id = "Jc",
-            name = "Jc Miñarro"
+            name = "Jc Miñarro",
         )
         val user2 = User(
             id = "amit",
-            name = "Amit Kumar"
+            name = "Amit Kumar",
         )
         val giphyCommand = Command(
             name = "giphy",
             description = "Post a random gif to the channel",
             args = "[text]",
-            set = "fun_set"
+            set = "fun_set",
         )
     }
 }

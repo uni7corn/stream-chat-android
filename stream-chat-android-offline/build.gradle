@@ -5,6 +5,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'com.google.devtools.ksp'
 apply plugin: 'de.mannodermaus.android-junit5'
+apply plugin: 'androidx.baselineprofile'
 
 ext {
     PUBLISH_GROUP_ID = Configuration.artifactGroup
@@ -16,6 +17,7 @@ apply from: "${rootDir}/scripts/publish-module.gradle"
 apply from: "${rootDir}/scripts/android.gradle"
 
 android {
+    namespace "io.getstream.chat.android.offline"
     defaultConfig {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -39,8 +41,15 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
-            testCoverageEnabled true
+            testCoverageEnabled false
         }
+    }
+}
+
+baselineProfile {
+    baselineProfileOutputDir = "."
+    filter {
+        include("io.getstream.chat.android.offline.**")
     }
 }
 
@@ -49,15 +58,17 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
         freeCompilerArgs += [
                 '-progressive',
                 '-Xexplicit-api=strict',
-                '-Xopt-in=kotlin.RequiresOptIn',
-                '-Xopt-in=io.getstream.chat.android.core.internal.InternalStreamChatApi',
+                '-opt-in=kotlin.RequiresOptIn',
+                '-opt-in=io.getstream.chat.android.core.internal.InternalStreamChatApi',
         ]
+        jvmTarget = JavaVersion.VERSION_11.toString()
     }
 }
 
 dependencies {
     api project(":stream-chat-android-client")
 
+    implementation Dependencies.streamLog
     // Kotlin
     implementation Dependencies.kotlinReflect
     implementation Dependencies.coroutinesCore
@@ -73,10 +84,15 @@ dependencies {
 
     // Serialization
     implementation Dependencies.moshi
+    implementation Dependencies.moshiKotlin
+    implementation Dependencies.moshiAdapters
     ksp Dependencies.moshiCodegen
 
     // Tests
     testImplementation project(":stream-chat-android-test")
+    testImplementation project(":stream-chat-android-client-test")
+    testImplementation testFixtures(project(":stream-chat-android-core"))
+    testImplementation Dependencies.streamResult
     testImplementation Dependencies.moshiKotlin
 
     testImplementation Dependencies.junitJupiterApi
@@ -94,9 +110,7 @@ dependencies {
     testImplementation Dependencies.coroutinesTest
 
     testImplementation Dependencies.robolectric
-    testImplementation Dependencies.dotenv
 
-    testImplementation Dependencies.kfixture
     testImplementation Dependencies.kluent
     testImplementation Dependencies.mockito
     testImplementation Dependencies.mockitoKotlin
@@ -109,4 +123,8 @@ dependencies {
     androidTestImplementation Dependencies.kluent
     androidTestImplementation Dependencies.mockito
     androidTestImplementation Dependencies.mockitoKotlin
+
+    detektPlugins(Dependencies.detektFormatting)
+
+    baselineProfile(project(":stream-chat-android-benchmark"))
 }

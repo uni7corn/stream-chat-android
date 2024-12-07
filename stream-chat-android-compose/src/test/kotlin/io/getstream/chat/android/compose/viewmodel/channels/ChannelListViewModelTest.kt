@@ -17,33 +17,43 @@
 package io.getstream.chat.android.compose.viewmodel.channels
 
 import io.getstream.chat.android.client.ChatClient
-import io.getstream.chat.android.client.api.models.AndFilterObject
-import io.getstream.chat.android.client.api.models.AutocompleteFilterObject
-import io.getstream.chat.android.client.api.models.FilterObject
-import io.getstream.chat.android.client.api.models.OrFilterObject
 import io.getstream.chat.android.client.api.models.QueryChannelsRequest
-import io.getstream.chat.android.client.api.models.QuerySort
 import io.getstream.chat.android.client.channel.ChannelClient
-import io.getstream.chat.android.client.models.Channel
-import io.getstream.chat.android.client.models.ChannelMute
-import io.getstream.chat.android.client.models.Filters
-import io.getstream.chat.android.client.models.User
-import io.getstream.chat.android.compose.state.channels.list.DeleteConversation
-import io.getstream.chat.android.offline.plugin.state.StateRegistry
-import io.getstream.chat.android.offline.plugin.state.global.internal.GlobalMutableState
-import io.getstream.chat.android.offline.plugin.state.querychannels.ChannelsStateData
-import io.getstream.chat.android.offline.plugin.state.querychannels.QueryChannelsState
+import io.getstream.chat.android.client.setup.state.ClientState
+import io.getstream.chat.android.compose.state.channels.list.ItemState
+import io.getstream.chat.android.compose.state.channels.list.SearchQuery
+import io.getstream.chat.android.models.AndFilterObject
+import io.getstream.chat.android.models.AutocompleteFilterObject
+import io.getstream.chat.android.models.Channel
+import io.getstream.chat.android.models.ChannelMute
+import io.getstream.chat.android.models.FilterObject
+import io.getstream.chat.android.models.Filters
+import io.getstream.chat.android.models.InitializationState
+import io.getstream.chat.android.models.OrFilterObject
+import io.getstream.chat.android.models.TypingEvent
+import io.getstream.chat.android.models.User
+import io.getstream.chat.android.models.querysort.QuerySortByField
+import io.getstream.chat.android.models.querysort.QuerySorter
+import io.getstream.chat.android.state.event.handler.chat.factory.ChatEventHandlerFactory
+import io.getstream.chat.android.state.plugin.internal.StatePlugin
+import io.getstream.chat.android.state.plugin.state.StateRegistry
+import io.getstream.chat.android.state.plugin.state.global.GlobalState
+import io.getstream.chat.android.state.plugin.state.querychannels.ChannelsStateData
+import io.getstream.chat.android.state.plugin.state.querychannels.QueryChannelsState
 import io.getstream.chat.android.test.TestCoroutineExtension
 import io.getstream.chat.android.test.asCall
+import io.getstream.chat.android.ui.common.state.channels.actions.DeleteConversation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.amshove.kluent.`should be equal to`
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.doSuspendableAnswer
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
@@ -52,6 +62,7 @@ import org.mockito.kotlin.whenever
 import java.util.Date
 
 @ExperimentalCoroutinesApi
+@ExtendWith(TestCoroutineExtension::class)
 internal class ChannelListViewModelTest {
 
     @Test
@@ -77,9 +88,10 @@ internal class ChannelListViewModelTest {
                 .givenChannelsQuery()
                 .givenChannelsState(
                     channelsStateData = ChannelsStateData.Result(listOf(channel1, channel2)),
-                    loading = false
+                    loading = false,
                 )
                 .givenChannelMutes()
+                .givenTypingChannels()
                 .get()
 
             val channelsState = viewModel.channelsState
@@ -96,7 +108,7 @@ internal class ChannelListViewModelTest {
             .givenChannelsQuery()
             .givenChannelsState(
                 channelsStateData = ChannelsStateData.Result(listOf(channel1, channel2)),
-                loading = false
+                loading = false,
             )
             .givenChannelMutes()
             .givenDeleteChannel()
@@ -119,7 +131,7 @@ internal class ChannelListViewModelTest {
             .givenChannelsQuery()
             .givenChannelsState(
                 channelsStateData = ChannelsStateData.Result(listOf(channel1, channel2)),
-                loading = false
+                loading = false,
             )
             .givenChannelMutes()
             .givenMuteChannel()
@@ -149,16 +161,17 @@ internal class ChannelListViewModelTest {
                 .givenChannelsQuery()
                 .givenChannelsState(
                     channelsStateData = ChannelsStateData.Result(listOf(channel1, channel2)),
-                    loading = false
+                    loading = false,
                 )
                 .givenChannelMutes(listOf(channelMute))
                 .givenUnmuteChannel()
+                .givenTypingChannels()
                 .get()
 
             viewModel.selectChannel(channel1)
             viewModel.unmuteChannel(channel1)
 
-            viewModel.channelsState.channelItems.first().isMuted `should be equal to` true
+            (viewModel.channelsState.channelItems.first() as ItemState.ChannelItemState).isMuted `should be equal to` true
             viewModel.activeChannelAction `should be equal to` null
             viewModel.selectedChannel.value `should be equal to` null
             verify(chatClient).unmuteChannel("messaging", "channel1")
@@ -172,7 +185,7 @@ internal class ChannelListViewModelTest {
                 .givenChannelsQuery()
                 .givenChannelsState(
                     channelsStateData = ChannelsStateData.Result(listOf(channel1, channel2)),
-                    loading = false
+                    loading = false,
                 )
                 .givenChannelMutes()
                 .get()
@@ -200,7 +213,7 @@ internal class ChannelListViewModelTest {
                 .givenChannelsState(
                     channelsStateData = ChannelsStateData.Result(listOf(channel1, channel2)),
                     nextPageRequest = nextPageRequest,
-                    loading = false
+                    loading = false,
                 )
                 .givenChannelMutes()
                 .givenIsOffline(false)
@@ -223,7 +236,7 @@ internal class ChannelListViewModelTest {
                 .givenChannelsQuery()
                 .givenChannelsState(
                     channelsStateData = ChannelsStateData.Result(listOf(channel1, channel2)),
-                    loading = false
+                    loading = false,
                 )
                 .givenChannelMutes()
                 .givenIsOffline(true)
@@ -245,12 +258,12 @@ internal class ChannelListViewModelTest {
                 .givenChannelsQuery()
                 .givenChannelsState(
                     channelsStateData = ChannelsStateData.Result(listOf(channel1, channel2)),
-                    loading = false
+                    loading = false,
                 )
                 .givenChannelMutes()
                 .get()
 
-            viewModel.setSearchQuery("Search query")
+            viewModel.setSearchQuery(SearchQuery.Channels("Search query"))
 
             val captor = argumentCaptor<QueryChannelsRequest>()
             verify(chatClient, times(2)).queryChannels(captor.capture())
@@ -261,37 +274,85 @@ internal class ChannelListViewModelTest {
             autoCompleteFilterObject.value `should be equal to` "Search query"
         }
 
+    @Test
+    fun `Given channel list in content state and the current user is online When loading more channels Should filter out duplicate calls`() =
+        runTest {
+            val nextPageRequest = QueryChannelsRequest(
+                filter = queryFilter,
+                querySort = querySort,
+                offset = 30,
+                limit = 60,
+            )
+            val chatClient: ChatClient = mock()
+            val viewModel = Fixture(chatClient)
+                .givenCurrentUser()
+                .givenChannelsQuery()
+                .givenChannelsState(
+                    channelsStateData = ChannelsStateData.Result(listOf(channel1, channel2)),
+                    nextPageRequest = nextPageRequest,
+                    loading = false,
+                )
+                .givenChannelMutes()
+                .givenIsOffline(false)
+                .get()
+
+            viewModel.loadMore()
+            viewModel.loadMore()
+            viewModel.loadMore()
+
+            val captor = argumentCaptor<QueryChannelsRequest>()
+            verify(chatClient, times(2)).queryChannels(captor.capture())
+            captor.allValues.size `should be equal to` 2
+            captor.firstValue.offset `should be equal to` 0
+            captor.secondValue.offset `should be equal to` 30
+        }
+
     private class Fixture(
         private val chatClient: ChatClient = mock(),
         private val channelClient: ChannelClient = mock(),
-        private val initialSort: QuerySort<Channel> = querySort,
+        private val initialSort: QuerySorter<Channel> = querySort,
         private val initialFilters: FilterObject? = queryFilter,
     ) {
-        private val globalState: GlobalMutableState = mock()
+        private val clientState: ClientState = mock()
         private val stateRegistry: StateRegistry = mock()
+        private val globalState: GlobalState = mock()
 
         init {
-            StateRegistry.instance = stateRegistry
-            GlobalMutableState.instance = globalState
-
+            val statePlugin: StatePlugin = mock()
+            whenever(statePlugin.resolveDependency(eq(StateRegistry::class))) doReturn stateRegistry
+            whenever(statePlugin.resolveDependency(eq(GlobalState::class))) doReturn globalState
+            whenever(chatClient.plugins) doReturn listOf(statePlugin)
             whenever(chatClient.channel(any())) doReturn channelClient
             whenever(chatClient.channel(any(), any())) doReturn channelClient
+            whenever(chatClient.clientState) doReturn clientState
         }
 
         fun givenCurrentUser(currentUser: User = User(id = "Jc")) = apply {
-            whenever(globalState.user) doReturn MutableStateFlow(currentUser)
+            whenever(clientState.user) doReturn MutableStateFlow(currentUser)
+            whenever(clientState.initializationState) doReturn MutableStateFlow(InitializationState.COMPLETE)
         }
 
         fun givenChannelMutes(channelMutes: List<ChannelMute> = emptyList()) = apply {
             whenever(globalState.channelMutes) doReturn MutableStateFlow(channelMutes)
         }
 
+        fun givenTypingChannels(typingChannels: Map<String, TypingEvent> = emptyMap()) = apply {
+            whenever(globalState.typingChannels) doReturn MutableStateFlow(typingChannels)
+        }
+
         fun givenIsOffline(isOffline: Boolean = false) = apply {
-            whenever(globalState.isOffline()) doReturn isOffline
+            whenever(clientState.isOffline) doReturn isOffline
         }
 
         fun givenChannelsQuery(channels: List<Channel> = emptyList()) = apply {
             whenever(chatClient.queryChannels(any())) doReturn channels.asCall()
+        }
+
+        fun givenChannelsQuery2(channels: List<Channel> = emptyList()) = apply {
+            whenever(chatClient.queryChannels(any())) doSuspendableAnswer {
+                delay(1)
+                channels.asCall()
+            }
         }
 
         fun givenDeleteChannel() = apply {
@@ -330,32 +391,26 @@ internal class ChannelListViewModelTest {
                 chatClient = chatClient,
                 initialSort = initialSort,
                 initialFilters = initialFilters,
+                chatEventHandlerFactory = ChatEventHandlerFactory(clientState),
             )
         }
     }
 
     companion object {
-        @JvmField
-        @RegisterExtension
-        val testCoroutines = TestCoroutineExtension()
 
         private val queryFilter = Filters.and(
             Filters.eq("type", "messaging"),
-            Filters.`in`("members", "jc")
+            Filters.`in`("members", "jc"),
         )
-        private val querySort = QuerySort.desc<Channel>("last_updated")
+        private val querySort = QuerySortByField.descByName<Channel>("lastUpdated")
 
-        private val channel1: Channel = Channel().apply {
-            type = "messaging"
-            id = "channel1"
-            cid = "messaging:channel1"
-            unreadCount = 0
-        }
-        private val channel2: Channel = Channel().apply {
-            type = "messaging"
-            id = "channel2"
-            cid = "messaging:channel2"
-            unreadCount = 0
-        }
+        private val channel1: Channel = Channel(
+            type = "messaging",
+            id = "channel1",
+        )
+        private val channel2: Channel = Channel(
+            type = "messaging",
+            id = "channel2",
+        )
     }
 }

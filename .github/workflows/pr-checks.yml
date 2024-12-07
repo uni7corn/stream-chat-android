@@ -15,15 +15,11 @@ concurrency:
 jobs:
   lint:
     name: ktlint
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
-      - name: Set up JDK 11
-        uses: actions/setup-java@v2
-        with:
-          distribution: adopt
-          java-version: 11
+        uses: actions/checkout@v3.1.0
+      - uses: ./.github/actions/setup-java
       - uses: ./.github/actions/gradle-cache
         with:
           key-prefix: gradle-lint
@@ -35,15 +31,11 @@ jobs:
 
   api_check:
     name: API check
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
-      - name: Set up JDK 11
-        uses: actions/setup-java@v2
-        with:
-          distribution: adopt
-          java-version: 11
+        uses: actions/checkout@v3.1.0
+      - uses: ./.github/actions/setup-java
       - uses: ./.github/actions/gradle-cache
         with:
           key-prefix: gradle-APICheck
@@ -52,15 +44,11 @@ jobs:
 
   debug_build:
     name: Debug build
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
-      - name: Set up JDK 11
-        uses: actions/setup-java@v2
-        with:
-          distribution: adopt
-          java-version: 11
+        uses: actions/checkout@v3.1.0
+      - uses: ./.github/actions/setup-java
       - uses: ./.github/actions/gradle-cache
         with:
           key-prefix: gradle-build
@@ -69,23 +57,27 @@ jobs:
 
   test:
     name: Unit tests
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
-      - name: Set up JDK 11
-        uses: actions/setup-java@v2
-        with:
-          distribution: adopt
-          java-version: 11
+        uses: actions/checkout@v3.1.0
+      - uses: ./.github/actions/setup-java
       - uses: ./.github/actions/gradle-cache
         with:
           key-prefix: gradle-test
       - name: Unit tests
         run: ./scripts/ci-unit-tests.sh
       - name: Upload testDebugUnitTest results
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3.1.0
         if: failure()
         with:
           name: testDebugUnitTest
           path: ./**/build/reports/tests/testDebugUnitTest
+
+  rubocop:
+    name: Rubocop
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: ./.github/actions/setup-ruby
+      - run: bundle exec fastlane rubocop

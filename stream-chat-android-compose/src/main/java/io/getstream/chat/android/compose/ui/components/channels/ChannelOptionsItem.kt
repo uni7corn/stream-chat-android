@@ -26,7 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.Icon
 import androidx.compose.material.Text
-import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -62,18 +62,18 @@ internal fun ChannelOptionsItem(
             .height(56.dp)
             .clickable(
                 onClick = onClick,
-                indication = rememberRipple(),
-                interactionSource = remember { MutableInteractionSource() }
+                indication = ripple(),
+                interactionSource = remember { MutableInteractionSource() },
             ),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start
+        horizontalArrangement = Arrangement.Start,
     ) {
         leadingIcon()
 
         Text(
             text = title,
             style = ChatTheme.typography.bodyBold,
-            color = titleColor
+            color = titleColor,
         )
     }
 }
@@ -97,10 +97,10 @@ private fun ChannelOptionsItemPreview() {
                         .padding(16.dp),
                     painter = painterResource(id = R.drawable.stream_compose_ic_person),
                     tint = ChatTheme.colors.textLowEmphasis,
-                    contentDescription = null
+                    contentDescription = null,
                 )
             },
-            onClick = {}
+            onClick = {},
         )
     }
 }

@@ -18,7 +18,7 @@ package io.getstream.chat.android.offline.repository
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.getstream.chat.android.offline.integration.BaseDomainTest2
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.amshove.kluent.shouldBeEqualTo
 import org.amshove.kluent.shouldBeNull
 import org.junit.Test
@@ -29,34 +29,27 @@ internal class ChannelRepositoryTest : BaseDomainTest2() {
     private val helper by lazy { repos }
 
     @Test
-    fun `inserting a channel and reading it should be equal`(): Unit = runBlocking {
+    fun `inserting a channel and reading it should be equal`(): Unit = runTest {
         helper.insertChannels(listOf(data.channel1))
-        helper.clearChannelCache()
-        val channel = helper.selectChannelWithoutMessages(data.channel1.cid)!!
-        channel.config = data.channel1.config
+        val channel = helper.selectChannel(data.channel1.cid)!!
 
         channel shouldBeEqualTo data.channel1
     }
 
     @Test
-    fun `deleting a channel should work`(): Unit = runBlocking {
+    fun `deleting a channel should work`(): Unit = runTest {
         helper.insertChannels(listOf(data.channel1))
         helper.deleteChannel(data.channel1.cid)
-        val entity = helper.selectChannelWithoutMessages(data.channel1.cid)
+        val entity = helper.selectChannel(data.channel1.cid)
 
         entity.shouldBeNull()
     }
 
     @Test
-    fun `updating a channel should work as intended`(): Unit = runBlocking {
+    fun `updating a channel should work as intended`(): Unit = runTest {
         helper.insertChannels(listOf(data.channel1, data.channel1Updated))
-        val channel = helper.selectChannelWithoutMessages(data.channel1.cid)!!
+        val channel = helper.selectChannel(data.channel1.cid)
 
-        // ignore these 4 fields
-        channel.config = data.channel1.config
-        channel.createdBy = data.channel1.createdBy
-        channel.watchers = data.channel1Updated.watchers
-        channel.watcherCount = data.channel1Updated.watcherCount
         channel shouldBeEqualTo data.channel1Updated
     }
 }

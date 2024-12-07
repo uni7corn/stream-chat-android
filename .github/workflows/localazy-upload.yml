@@ -12,9 +12,10 @@ on:
 jobs:
   localazy-upload:
     name: Upload strings to Localazy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v1
+      - uses: ./.github/actions/setup-java
       - uses: localazy/upload@v1
         with:
           read_key: ${{ secrets.LOCALAZY_READ_KEY }}

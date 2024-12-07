@@ -18,68 +18,50 @@ package io.getstream.chat.android.client.utils.observable
 
 import io.getstream.chat.android.client.ChatEventListener
 import io.getstream.chat.android.client.clientstate.DisconnectCause
-import io.getstream.chat.android.client.errors.ChatError
 import io.getstream.chat.android.client.events.ChatEvent
 import io.getstream.chat.android.client.events.ConnectedEvent
 import io.getstream.chat.android.client.events.ConnectingEvent
 import io.getstream.chat.android.client.events.DisconnectedEvent
 import io.getstream.chat.android.client.events.ErrorEvent
-import io.getstream.chat.android.client.logger.ChatLogger
-import io.getstream.chat.android.client.models.ConnectionData
-import io.getstream.chat.android.client.models.EventType
 import io.getstream.chat.android.client.socket.ChatSocket
 import io.getstream.chat.android.client.socket.SocketListener
-import io.getstream.chat.android.client.utils.Result
-import io.getstream.chat.android.client.utils.internal.toggle.ToggleService
+import io.getstream.chat.android.models.ConnectionData
+import io.getstream.chat.android.models.EventType
+import io.getstream.result.Error
+import io.getstream.result.Result
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.Date
-import io.getstream.chat.android.client.experimental.socket.ChatSocket as ChatSocketExperimental
 
 internal class ChatEventsObservable(
-    private val socket: ChatSocket,
     private val waitConnection: FlowCollector<Result<ConnectionData>>,
     private val scope: CoroutineScope,
-    private val chatSocketExperimental: ChatSocketExperimental
+    private val chatSocket: ChatSocket,
 ) {
 
-    private val logger = ChatLogger.get("EventsObservable")
+    private val mutex = Mutex()
 
-    private var subscriptions = setOf<EventSubscription>()
-    private var eventsMapper = EventsMapper(this)
+    private val subscriptions = mutableSetOf<EventSubscription>()
+    private val eventsMapper = EventsMapper(this)
 
     private fun onNext(event: ChatEvent) {
-        subscriptions.forEach { subscription ->
-            if (!subscription.isDisposed) {
-                subscription.onNext(event)
-            }
-        }
+        notifySubscriptions(event)
         emitConnectionEvents(event)
-        subscriptions = subscriptions.filterNot(Disposable::isDisposed).toSet()
-        checkIfEmpty()
     }
 
     private fun emitConnectionEvents(event: ChatEvent) {
         scope.launch {
             when (event) {
                 is ConnectedEvent -> {
-                    waitConnection.emit(Result.success(ConnectionData(event.me, event.connectionId)))
+                    waitConnection.emit(Result.Success(ConnectionData(event.me, event.connectionId)))
                 }
                 is ErrorEvent -> {
-                    waitConnection.emit(Result.error(event.error))
+                    waitConnection.emit(Result.Failure(event.error))
                 }
                 else -> Unit // Ignore other events
-            }
-        }
-    }
-
-    private fun checkIfEmpty() {
-        if (subscriptions.isEmpty()) {
-            if (ToggleService.isSocketExperimental()) {
-                chatSocketExperimental.removeListener(eventsMapper)
-            } else {
-                socket.removeListener(eventsMapper)
             }
         }
     }
@@ -91,6 +73,13 @@ internal class ChatEventsObservable(
         return addSubscription(SubscriptionImpl(filter, listener))
     }
 
+    fun subscribeSuspend(
+        filter: (ChatEvent) -> Boolean = { true },
+        listener: ChatEventSuspendListener<ChatEvent>,
+    ): Disposable {
+        return addSubscription(SuspendSubscription(scope, filter, listener))
+    }
+
     fun subscribeSingle(
         filter: (ChatEvent) -> Boolean = { true },
         listener: ChatEventListener<ChatEvent>,
@@ -98,23 +87,45 @@ internal class ChatEventsObservable(
         return addSubscription(
             SubscriptionImpl(filter, listener).apply {
                 afterEventDelivered = this::dispose
-            }
+            },
         )
     }
 
-    private fun addSubscription(subscription: EventSubscription): Disposable {
-        if (subscriptions.isEmpty()) {
-            // add listener to socket events only once
-            if (ToggleService.isSocketExperimental()) {
-                chatSocketExperimental.addListener(eventsMapper)
-            } else {
-                socket.addListener(eventsMapper)
+    private fun notifySubscriptions(event: ChatEvent) {
+        scope.launch {
+            mutex.withLock {
+                val iterator = subscriptions.iterator()
+                while (iterator.hasNext()) {
+                    val subscription = iterator.next()
+                    if (subscription.isDisposed) {
+                        iterator.remove()
+                    } else {
+                        subscription.onNext(event)
+                    }
+                }
+                // remove listener from socket events if there are no subscriptions
+                if (subscriptions.isEmpty()) {
+                    chatSocket.removeListener(eventsMapper)
+                }
             }
         }
+    }
 
-        subscriptions = subscriptions + subscription
-
+    private fun addSubscription(subscription: EventSubscription): Disposable {
+        scope.launch {
+            mutex.withLock {
+                // add listener to socket events only once
+                if (subscriptions.isEmpty()) {
+                    chatSocket.addListener(eventsMapper)
+                }
+                subscriptions.add(subscription)
+            }
+        }
         return subscription
+    }
+
+    internal fun interface ChatEventSuspendListener<EventT : ChatEvent> {
+        suspend fun onEvent(event: EventT)
     }
 
     /**
@@ -122,8 +133,11 @@ internal class ChatEventsObservable(
      */
     private class EventsMapper(private val observable: ChatEventsObservable) : SocketListener() {
 
+        override val deliverOnMainThread: Boolean
+            get() = false
+
         override fun onConnecting() {
-            observable.onNext(ConnectingEvent(EventType.CONNECTION_CONNECTING, Date()))
+            observable.onNext(ConnectingEvent(EventType.CONNECTION_CONNECTING, Date(), null))
         }
 
         override fun onConnected(event: ConnectedEvent) {
@@ -131,15 +145,29 @@ internal class ChatEventsObservable(
         }
 
         override fun onDisconnected(cause: DisconnectCause) {
-            observable.onNext(DisconnectedEvent(EventType.CONNECTION_DISCONNECTED, Date(), cause))
+            observable.onNext(
+                DisconnectedEvent(
+                    EventType.CONNECTION_DISCONNECTED,
+                    createdAt = Date(),
+                    disconnectCause = cause,
+                    rawCreatedAt = null,
+                ),
+            )
         }
 
         override fun onEvent(event: ChatEvent) {
             observable.onNext(event)
         }
 
-        override fun onError(error: ChatError) {
-            observable.onNext(ErrorEvent(EventType.CONNECTION_ERROR, Date(), error))
+        override fun onError(error: Error) {
+            observable.onNext(
+                ErrorEvent(
+                    EventType.CONNECTION_ERROR,
+                    createdAt = Date(),
+                    error = error,
+                    rawCreatedAt = null,
+                ),
+            )
         }
     }
 }

@@ -18,18 +18,21 @@ package io.getstream.chat.android.client.api.internal
 
 import io.getstream.chat.android.client.api.ChatApi
 import io.getstream.chat.android.client.api.ErrorCall
-import io.getstream.chat.android.client.call.Call
-import io.getstream.chat.android.client.errors.ChatError
-import io.getstream.chat.android.client.models.Channel
-import io.getstream.chat.android.client.models.CustomObject
-import io.getstream.chat.android.client.models.Message
-import io.getstream.chat.android.client.models.User
+import io.getstream.chat.android.models.Channel
+import io.getstream.chat.android.models.CustomObject
+import io.getstream.chat.android.models.Member
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.models.User
+import io.getstream.result.Error
+import io.getstream.result.call.Call
+import kotlinx.coroutines.CoroutineScope
 
 /**
  * Intercepts [ChatApi] calls and validates [CustomObject.extraData] keys to prevent passing reserved names.
  */
 @Suppress("TooManyFunctions")
 internal class ExtraDataValidator(
+    private val scope: CoroutineScope,
     private val delegate: ChatApi,
 ) : ChatApi by delegate {
 
@@ -55,13 +58,23 @@ internal class ExtraDataValidator(
     }
 
     override fun updateMessage(message: Message): Call<Message> {
-        return delegate.updateMessage(message)
-            .withExtraDataValidation(message.extraData)
+        return delegate.updateMessage(
+            message = message,
+        ).withExtraDataValidation(message.extraData)
     }
 
-    override fun partialUpdateMessage(messageId: String, set: Map<String, Any>, unset: List<String>): Call<Message> {
-        return delegate.partialUpdateMessage(messageId, set, unset)
-            .withExtraDataValidation(set)
+    override fun partialUpdateMessage(
+        messageId: String,
+        set: Map<String, Any>,
+        unset: List<String>,
+        skipEnrichUrl: Boolean,
+    ): Call<Message> {
+        return delegate.partialUpdateMessage(
+            messageId = messageId,
+            set = set,
+            unset = unset,
+            skipEnrichUrl = skipEnrichUrl,
+        ).withExtraDataValidation(set)
     }
 
     override fun updateUsers(users: List<User>): Call<List<User>> {
@@ -74,16 +87,29 @@ internal class ExtraDataValidator(
             .withExtraDataValidation(set)
     }
 
+    override fun partialUpdateMember(
+        channelType: String,
+        channelId: String,
+        userId: String,
+        set: Map<String, Any>,
+        unset: List<String>,
+    ): Call<Member> {
+        return delegate
+            .partialUpdateMember(channelType, channelId, userId, set, unset)
+            .withExtraDataValidation(set)
+    }
+
     private fun <T : CustomObject> Call<List<T>>.withExtraDataValidation(
-        objects: List<T>
+        objects: List<T>,
     ): Call<List<T>> {
         val (obj, reserved) = objects.findReserved()
         return when (obj == null || reserved == null) {
             true -> this
             else -> ErrorCall(
-                ChatError(
-                    message = obj.composeErrorMessage(reserved)
-                )
+                scope,
+                Error.GenericError(
+                    message = obj.composeErrorMessage(reserved),
+                ),
             )
         }
     }
@@ -93,23 +119,25 @@ internal class ExtraDataValidator(
         return when (reserved.isEmpty()) {
             true -> this
             else -> ErrorCall(
-                ChatError(
-                    message = obj.composeErrorMessage(reserved)
-                )
+                scope,
+                Error.GenericError(
+                    message = obj.composeErrorMessage(reserved),
+                ),
             )
         }
     }
 
     private inline fun <reified T : CustomObject> Call<T>.withExtraDataValidation(
-        extraData: Map<String, Any>
+        extraData: Map<String, Any>,
     ): Call<T> {
         val reserved = extraData.findReserved<T>()
         return when (reserved.isEmpty()) {
             true -> this
             else -> ErrorCall(
-                ChatError(
-                    message = "'extraData' contains reserved keys: ${reserved.joinToString()}"
-                )
+                scope,
+                Error.GenericError(
+                    message = "'extraData' contains reserved keys: ${reserved.joinToString()}",
+                ),
             )
         }
     }
@@ -129,6 +157,7 @@ internal class ExtraDataValidator(
             is Channel -> extraData.keys.filter(reservedInChannelPredicate)
             is Message -> extraData.keys.filter(reservedInChannelPredicate)
             is User -> extraData.keys.filter(reservedInChannelPredicate)
+            is Member -> extraData.keys.filter(reservedInMemberPredicate)
             else -> emptyList()
         }
     }
@@ -138,6 +167,7 @@ internal class ExtraDataValidator(
             Channel::class -> keys.filter(reservedInChannelPredicate)
             Message::class -> keys.filter(reservedInMessagePredicate)
             User::class -> keys.filter(reservedInUserPredicate)
+            Member::class -> keys.filter(reservedInMemberPredicate)
             else -> emptyList()
         }
     }
@@ -151,6 +181,7 @@ internal class ExtraDataValidator(
             is Channel -> "channel"
             is Message -> "message"
             is User -> "user"
+            is Member -> "member"
             else -> ""
         }
     }
@@ -195,8 +226,24 @@ internal class ExtraDataValidator(
             "updated_at",
         )
 
+        private val reservedInMember = setOf(
+            "user",
+            "created_at",
+            "updated_at",
+            "invited",
+            "invite_accepted_at",
+            "invite_rejected_at",
+            "shadow_banned",
+            "banned",
+            "channel_role",
+            "notifications_muted",
+            "status",
+            "ban_expires",
+        )
+
         private val reservedInChannelPredicate: (String) -> Boolean = reservedInChannel::contains
         private val reservedInMessagePredicate: (String) -> Boolean = reservedInMessage::contains
         private val reservedInUserPredicate: (String) -> Boolean = reservedInUser::contains
+        private val reservedInMemberPredicate: (String) -> Boolean = reservedInMember::contains
     }
 }

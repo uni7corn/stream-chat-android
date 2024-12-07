@@ -19,15 +19,14 @@ package io.getstream.chat.ui.sample.application
 import android.app.Application
 import io.getstream.chat.android.client.utils.internal.toggle.ToggleService
 import io.getstream.chat.android.core.internal.InternalStreamChatApi
-import io.getstream.chat.ui.sample.BuildConfig
 import io.getstream.chat.ui.sample.data.user.SampleUser
 import io.getstream.chat.ui.sample.data.user.UserRepository
 
 class App : Application() {
 
     // done for simplicity, a DI framework should be used in the real app
-    val chatInitializer = ChatInitializer(this)
-    val userRepository = UserRepository(this)
+    val chatInitializer = ChatInitializer(context = this, autoTranslationEnabled = false)
+    val userRepository = UserRepository(context = this)
 
     override fun onCreate() {
         super.onCreate()
@@ -49,7 +48,10 @@ class App : Application() {
 
     @OptIn(InternalStreamChatApi::class)
     private fun initializeToggleService() {
-        ToggleService.init(applicationContext, mapOf(ToggleService.TOGGLE_KEY_SOCKET_REFACTOR to BuildConfig.DEBUG))
+        ToggleService.init(
+            applicationContext,
+            emptyMap(),
+        )
     }
 
     companion object {

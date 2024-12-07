@@ -18,7 +18,8 @@ package io.getstream.chat.android.client.api
 
 import io.getstream.chat.android.client.ChatClient
 import io.getstream.chat.android.client.api.internal.DistinctChatApi
-import io.getstream.chat.android.client.logger.ChatLogger
+import io.getstream.chat.android.client.logger.ChatLoggerConfig
+import io.getstream.chat.android.client.notifications.handler.NotificationConfig
 
 /**
  * A config to setup the [ChatClient] behavior.
@@ -32,6 +33,7 @@ import io.getstream.chat.android.client.logger.ChatLogger
  * @param loggerConfig A logging config to be used by the client.
  * @param distinctApiCalls Controls whether [DistinctChatApi] is enabled or not.
  * @param debugRequests Controls whether requests can be recorded or not.
+ * @param notificationConfig A notification config to be used by the client.
  */
 @Suppress("LongParameterList")
 public class ChatClientConfig @JvmOverloads constructor(
@@ -40,9 +42,10 @@ public class ChatClientConfig @JvmOverloads constructor(
     public var cdnHttpUrl: String,
     public var wssUrl: String,
     public val warmUp: Boolean,
-    public val loggerConfig: ChatLogger.Config,
+    public val loggerConfig: ChatLoggerConfig,
     public var distinctApiCalls: Boolean = true,
-    public val debugRequests: Boolean
+    public val debugRequests: Boolean,
+    public val notificationConfig: NotificationConfig,
 ) {
     public var isAnonymous: Boolean = false
 }

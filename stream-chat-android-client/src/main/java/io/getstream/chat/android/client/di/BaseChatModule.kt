@@ -18,7 +18,10 @@ package io.getstream.chat.android.client.di
 
 import android.content.Context
 import android.net.ConnectivityManager
+import androidx.lifecycle.Lifecycle
 import com.moczul.ok2curl.CurlInterceptor
+import com.moczul.ok2curl.logger.Logger
+import io.getstream.chat.android.client.StreamLifecycleObserver
 import io.getstream.chat.android.client.api.AnonymousApi
 import io.getstream.chat.android.client.api.AuthenticatedApi
 import io.getstream.chat.android.client.api.ChatApi
@@ -38,18 +41,19 @@ import io.getstream.chat.android.client.api2.MoshiChatApi
 import io.getstream.chat.android.client.api2.endpoint.ChannelApi
 import io.getstream.chat.android.client.api2.endpoint.ConfigApi
 import io.getstream.chat.android.client.api2.endpoint.DeviceApi
+import io.getstream.chat.android.client.api2.endpoint.FileDownloadApi
 import io.getstream.chat.android.client.api2.endpoint.GeneralApi
 import io.getstream.chat.android.client.api2.endpoint.GuestApi
 import io.getstream.chat.android.client.api2.endpoint.MessageApi
 import io.getstream.chat.android.client.api2.endpoint.ModerationApi
+import io.getstream.chat.android.client.api2.endpoint.OpenGraphApi
+import io.getstream.chat.android.client.api2.endpoint.PollsApi
+import io.getstream.chat.android.client.api2.endpoint.ThreadsApi
 import io.getstream.chat.android.client.api2.endpoint.UserApi
-import io.getstream.chat.android.client.clientstate.SocketStateService
+import io.getstream.chat.android.client.api2.endpoint.VideoCallApi
 import io.getstream.chat.android.client.clientstate.UserStateService
-import io.getstream.chat.android.client.experimental.socket.lifecycle.NetworkLifecyclePublisher
-import io.getstream.chat.android.client.experimental.socket.lifecycle.StreamLifecyclePublisher
-import io.getstream.chat.android.client.helpers.QueryChannelsPostponeHelper
+import io.getstream.chat.android.client.debugger.ChatClientDebugger
 import io.getstream.chat.android.client.logger.ChatLogLevel
-import io.getstream.chat.android.client.logger.ChatLogger
 import io.getstream.chat.android.client.network.NetworkStateProvider
 import io.getstream.chat.android.client.notifications.ChatNotifications
 import io.getstream.chat.android.client.notifications.ChatNotificationsImpl
@@ -59,69 +63,73 @@ import io.getstream.chat.android.client.notifications.handler.NotificationHandle
 import io.getstream.chat.android.client.parser.ChatParser
 import io.getstream.chat.android.client.parser2.MoshiChatParser
 import io.getstream.chat.android.client.plugins.requests.ApiRequestsAnalyser
+import io.getstream.chat.android.client.scope.ClientScope
+import io.getstream.chat.android.client.scope.UserScope
+import io.getstream.chat.android.client.setup.state.internal.MutableClientState
 import io.getstream.chat.android.client.socket.ChatSocket
 import io.getstream.chat.android.client.socket.SocketFactory
 import io.getstream.chat.android.client.token.TokenManager
 import io.getstream.chat.android.client.token.TokenManagerImpl
+import io.getstream.chat.android.client.uploader.FileTransformer
 import io.getstream.chat.android.client.uploader.FileUploader
 import io.getstream.chat.android.client.uploader.StreamFileUploader
-import io.getstream.chat.android.core.internal.coroutines.DispatcherProvider
-import kotlinx.coroutines.CoroutineScope
+import io.getstream.chat.android.client.user.CurrentUserFetcher
+import io.getstream.chat.android.models.UserId
+import io.getstream.log.StreamLog
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
-import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
-import io.getstream.chat.android.client.experimental.socket.ChatSocket as ChatSocketExperimental
 
 @Suppress("TooManyFunctions")
-internal open class BaseChatModule(
+internal open class BaseChatModule
+@Suppress("LongParameterList")
+constructor(
     private val appContext: Context,
+    private val clientScope: ClientScope,
+    private val userScope: UserScope,
     private val config: ChatClientConfig,
     private val notificationsHandler: NotificationHandler,
-    private val notificationConfig: NotificationConfig,
+    private val fileTransformer: FileTransformer,
     private val fileUploader: FileUploader? = null,
     private val tokenManager: TokenManager = TokenManagerImpl(),
-    private val callbackExecutor: Executor?,
     private val customOkHttpClient: OkHttpClient? = null,
+    private val clientDebugger: ChatClientDebugger? = null,
+    private val lifecycle: Lifecycle,
     private val httpClientConfig: (OkHttpClient.Builder) -> OkHttpClient.Builder = { it },
 ) {
 
-    private val defaultLogger: ChatLogger = ChatLogger.Builder(config.loggerConfig).build()
+    private val moshiParser: ChatParser by lazy { MoshiChatParser(currentUserIdProvider) }
+    private val socketFactory: SocketFactory by lazy { SocketFactory(moshiParser, tokenManager) }
 
-    private val moshiParser: ChatParser by lazy { MoshiChatParser() }
-
-    private val defaultNotifications by lazy { buildNotification(notificationsHandler, notificationConfig) }
+    private val defaultNotifications by lazy { buildNotification(notificationsHandler, config.notificationConfig) }
     private val defaultApi by lazy { buildApi(config) }
-    private val defaultSocket by lazy {
-        buildSocket(config, moshiParser)
-    }
-    private val chatSocketExperimental: ChatSocketExperimental by lazy {
-        buildExperimentalChatSocket(config, moshiParser)
-    }
+    internal val chatSocket: ChatSocket by lazy { buildChatSocket(config) }
     private val defaultFileUploader by lazy {
         StreamFileUploader(buildRetrofitCdnApi())
     }
 
-    val networkScope: CoroutineScope = CoroutineScope(DispatcherProvider.IO)
-    val socketStateService: SocketStateService = SocketStateService()
+    val lifecycleObserver: StreamLifecycleObserver by lazy { StreamLifecycleObserver(userScope, lifecycle) }
+    val networkStateProvider: NetworkStateProvider by lazy {
+        NetworkStateProvider(userScope, appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager)
+    }
     val userStateService: UserStateService = UserStateService()
-    val queryChannelsPostponeHelper: QueryChannelsPostponeHelper by lazy {
-        QueryChannelsPostponeHelper(
-            socketStateService = socketStateService,
-            coroutineScope = networkScope,
-            chatSocketExperimental = chatSocketExperimental
+
+    val mutableClientState by lazy {
+        MutableClientState(networkStateProvider)
+    }
+
+    val currentUserFetcher by lazy {
+        CurrentUserFetcher(
+            networkStateProvider = networkStateProvider,
+            socketFactory = socketFactory,
+            config = config,
         )
     }
+    private val currentUserIdProvider: () -> UserId? = { userScope.userId.value }
 
     //region Modules
 
     fun api(): ChatApi = defaultApi
-
-    fun socket(): ChatSocket = defaultSocket
-
-    fun experimentalSocket() = chatSocketExperimental
-
-    fun logger(): ChatLogger = defaultLogger
 
     fun notifications(): ChatNotifications = defaultNotifications
 
@@ -149,7 +157,7 @@ internal open class BaseChatModule(
             .baseUrl(endpoint)
             .client(okHttpClient)
             .also(parser::configRetrofit)
-            .addCallAdapterFactory(RetrofitCallAdapterFactory.create(parser, callbackExecutor))
+            .addCallAdapterFactory(RetrofitCallAdapterFactory.create(parser, userScope))
             .build()
     }
 
@@ -175,7 +183,7 @@ internal open class BaseChatModule(
             // timeouts
             // interceptors
             .addInterceptor(ApiKeyInterceptor(config.apiKey))
-            .addInterceptor(HeadersInterceptor(getAnonymousProvider(config, isAnonymousApi)))
+            .addInterceptor(HeadersInterceptor(context = appContext, getAnonymousProvider(config, isAnonymousApi)))
             .apply {
                 if (config.debugRequests) {
                     addInterceptor(ApiRequestAnalyserInterceptor(ApiRequestsAnalyser.get()))
@@ -186,16 +194,20 @@ internal open class BaseChatModule(
                 TokenAuthInterceptor(
                     tokenManager,
                     parser,
-                    getAnonymousProvider(config, isAnonymousApi)
-                )
+                    getAnonymousProvider(config, isAnonymousApi),
+                ),
             )
             .apply {
                 if (config.loggerConfig.level != ChatLogLevel.NOTHING) {
                     addInterceptor(HttpLoggingInterceptor())
                     addInterceptor(
-                        CurlInterceptor { message ->
-                            logger().logI("CURL", message)
-                        }
+                        CurlInterceptor(
+                            logger = object : Logger {
+                                override fun log(message: String) {
+                                    StreamLog.i("Chat:CURL") { message }
+                                }
+                            },
+                        ),
                     )
                 }
             }
@@ -209,38 +221,24 @@ internal open class BaseChatModule(
         return { isAnonymousApi || config.isAnonymous }
     }
 
-    private fun buildSocket(
+    private fun buildChatSocket(
         chatConfig: ChatClientConfig,
-        parser: ChatParser,
     ) = ChatSocket(
         chatConfig.apiKey,
         chatConfig.wssUrl,
         tokenManager,
-        SocketFactory(parser, tokenManager),
-        NetworkStateProvider(appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager),
-        parser,
-        networkScope,
-    )
-
-    private fun buildExperimentalChatSocket(
-        chatConfig: ChatClientConfig,
-        parser: ChatParser,
-    ) = ChatSocketExperimental(
-        chatConfig.apiKey,
-        chatConfig.wssUrl,
-        tokenManager,
-        SocketFactory(parser, tokenManager),
-        networkScope,
-        parser,
-        listOf(
-            StreamLifecyclePublisher(),
-            NetworkLifecyclePublisher(appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager),
-        ),
+        socketFactory,
+        userScope,
+        lifecycleObserver,
+        networkStateProvider,
+        clientDebugger,
     )
 
     @Suppress("RemoveExplicitTypeArguments")
     private fun buildApi(chatConfig: ChatClientConfig): ChatApi = MoshiChatApi(
+        currentUserIdProvider,
         fileUploader ?: defaultFileUploader,
+        fileTransformer = fileTransformer,
         buildRetrofitApi<UserApi>(),
         buildRetrofitApi<GuestApi>(),
         buildRetrofitApi<MessageApi>(),
@@ -249,13 +247,19 @@ internal open class BaseChatModule(
         buildRetrofitApi<ModerationApi>(),
         buildRetrofitApi<GeneralApi>(),
         buildRetrofitApi<ConfigApi>(),
-        networkScope,
+        buildRetrofitApi<VideoCallApi>(),
+        buildRetrofitApi<FileDownloadApi>(),
+        buildRetrofitApi<OpenGraphApi>(),
+        buildRetrofitApi<ThreadsApi>(),
+        buildRetrofitApi<PollsApi>(),
+        userScope,
+        userScope,
     ).let { originalApi ->
-        DistinctChatApiEnabler(DistinctChatApi(originalApi)) {
+        DistinctChatApiEnabler(DistinctChatApi(userScope, originalApi)) {
             chatConfig.distinctApiCalls
         }
     }.let { originalApi ->
-        ExtraDataValidator(originalApi)
+        ExtraDataValidator(userScope, originalApi)
     }
 
     private inline fun <reified T> buildRetrofitApi(): T {
@@ -276,7 +280,7 @@ internal open class BaseChatModule(
 
             if (anon && auth) {
                 throw IllegalStateException(
-                    "Api class must be annotated with either @AnonymousApi or @AuthenticatedApi, and not both"
+                    "Api class must be annotated with either @AnonymousApi or @AuthenticatedApi, and not both",
                 )
             }
 

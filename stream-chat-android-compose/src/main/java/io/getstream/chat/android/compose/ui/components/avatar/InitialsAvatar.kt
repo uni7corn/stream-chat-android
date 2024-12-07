@@ -22,7 +22,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material.Text
-import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -59,8 +60,8 @@ public fun InitialsAvatar(
     val clickableModifier: Modifier = if (onClick != null) {
         modifier.clickable(
             onClick = onClick,
-            indication = rememberRipple(bounded = false),
-            interactionSource = remember { MutableInteractionSource() }
+            indication = ripple(bounded = false),
+            interactionSource = remember { MutableInteractionSource() },
         )
     } else {
         modifier
@@ -71,15 +72,16 @@ public fun InitialsAvatar(
     Box(
         modifier = clickableModifier
             .clip(shape)
-            .background(brush = initialsGradient)
+            .background(brush = initialsGradient),
     ) {
         Text(
             modifier = Modifier
+                .testTag("Stream_InitialsAvatar")
                 .align(Alignment.Center)
                 .offset(avatarOffset.x, avatarOffset.y),
             text = initials,
             style = textStyle,
-            color = Color.White
+            color = Color.White,
         )
     }
 }

@@ -18,7 +18,7 @@ package io.getstream.chat.android.client.api2.mapping
 
 import io.getstream.chat.android.client.api2.model.dto.CommandDto
 import io.getstream.chat.android.client.api2.model.dto.ConfigDto
-import io.getstream.chat.android.client.models.Config
+import io.getstream.chat.android.models.Config
 
 internal fun ConfigDto.toDomain(): Config =
     Config(
@@ -36,6 +36,8 @@ internal fun ConfigDto.toDomain(): Config =
         urlEnrichmentEnabled = url_enrichment,
         customEventsEnabled = custom_events,
         pushNotificationsEnabled = push_notifications,
+        skipLastMsgUpdateForSystemMsgs = skip_last_msg_update_for_system_msgs ?: false,
+        pollsEnabled = polls,
         messageRetention = message_retention,
         maxMessageLength = max_message_length,
         automod = automod,

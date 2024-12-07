@@ -29,18 +29,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import io.getstream.chat.android.client.models.Message
+import androidx.compose.ui.util.fastAny
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
-import io.getstream.chat.android.compose.ui.util.buildAnnotatedMessageText
-import io.getstream.chat.android.compose.ui.util.isEmojiOnly
+import io.getstream.chat.android.compose.ui.util.AnnotationTagEmail
+import io.getstream.chat.android.compose.ui.util.AnnotationTagMention
+import io.getstream.chat.android.compose.ui.util.AnnotationTagUrl
 import io.getstream.chat.android.compose.ui.util.isEmojiOnlyWithoutBubble
 import io.getstream.chat.android.compose.ui.util.isFewEmoji
 import io.getstream.chat.android.compose.ui.util.isSingleEmoji
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.models.User
+import io.getstream.chat.android.ui.common.utils.extensions.getUserByNameOrId
+import io.getstream.chat.android.ui.common.utils.extensions.isMine
 
 /**
  * Default text element for messages, with extra styling and padding for the chat bubble.
@@ -51,137 +58,66 @@ import io.getstream.chat.android.compose.ui.util.isSingleEmoji
  * Alternatively, it just shows a basic [Text] element.
  *
  * @param message Message to show.
+ * @param currentUser The currently logged in user.
  * @param modifier Modifier for styling.
- * @param isQuote Is the message is a quote inside another message.
  * @param onLongItemClick Handler used for long pressing on the message text.
+ * @param onLinkClick Handler used for clicking on a link in the message.
  */
-@Deprecated(
-    message = "Deprecated after moving the quoted text composition logic to QuotedMessageText which is now " +
-        "used to compose quoted messages. Use MessageText for regular message text.",
-    replaceWith = ReplaceWith(
-        expression = "MessageText(message: Message, modifier: Modifier = Modifier, onLongItemClick: (Message) -> Unit)",
-        imports = ["io.getstream.chat.android.compose.ui.components.messages.MessageText"]
-    ),
-    level = DeprecationLevel.ERROR,
-)
 @Composable
+@Suppress("LongMethod")
 public fun MessageText(
     message: Message,
+    currentUser: User?,
     modifier: Modifier = Modifier,
-    isQuote: Boolean = false,
     onLongItemClick: (Message) -> Unit,
+    onLinkClick: ((Message, String) -> Unit)? = null,
+    onUserMentionClick: (User) -> Unit = {},
 ) {
     val context = LocalContext.current
 
-    val styledText = buildAnnotatedMessageText(message)
-    val annotations = styledText.getStringAnnotations(0, styledText.lastIndex)
+    val styledText = ChatTheme.messageTextFormatter.format(message, currentUser)
 
-    val isEmojiOnly = message.isEmojiOnly() && !isQuote
-    val isSingleEmoji = message.isSingleEmoji() && !isQuote
-
-    val style = when {
-        isSingleEmoji -> ChatTheme.typography.singleEmoji
-        isEmojiOnly -> ChatTheme.typography.emojiOnly
-        else -> ChatTheme.typography.bodyBold
-    }
-
-    if (annotations.isNotEmpty()) {
-        ClickableText(
-            modifier = modifier
-                .padding(
-                    start = 12.dp,
-                    end = 12.dp,
-                    top = 8.dp,
-                    bottom = 8.dp
-                ),
-            text = styledText,
-            style = style,
-            onLongPress = { onLongItemClick(message) }
-        ) { position ->
-            val targetUrl = annotations.firstOrNull {
-                position in it.start..it.end
-            }?.item
-
-            if (targetUrl != null && targetUrl.isNotEmpty()) {
-                context.startActivity(
-                    Intent(
-                        Intent.ACTION_VIEW,
-                        Uri.parse(targetUrl)
-                    )
-                )
-            }
-        }
-    } else {
-        val horizontalPadding = if (isEmojiOnly) 0.dp else 12.dp
-        Text(
-            modifier = modifier
-                .padding(
-                    start = horizontalPadding,
-                    end = horizontalPadding,
-                    top = if (isEmojiOnly) 0.dp else 8.dp,
-                    bottom = if (isEmojiOnly) 0.dp else 8.dp
-                )
-                .clipToBounds(),
-            text = styledText,
-            style = style
-        )
-    }
-}
-
-/**
- * Default text element for messages, with extra styling and padding for the chat bubble.
- *
- * It detects if we have any annotations/links in the message, and if so, it uses the [ClickableText]
- * component to allow for clicks on said links, that will open the link.
- *
- * Alternatively, it just shows a basic [Text] element.
- *
- * @param message Message to show.
- * @param modifier Modifier for styling.
- * @param onLongItemClick Handler used for long pressing on the message text.
- */
-@Composable
-public fun MessageText(
-    message: Message,
-    modifier: Modifier = Modifier,
-    onLongItemClick: (Message) -> Unit,
-) {
-    val context = LocalContext.current
-
-    val styledText = buildAnnotatedMessageText(message)
     val annotations = styledText.getStringAnnotations(0, styledText.lastIndex)
 
     // TODO: Fix emoji font padding once this is resolved and exposed: https://issuetracker.google.com/issues/171394808
     val style = when {
         message.isSingleEmoji() -> ChatTheme.typography.singleEmoji
         message.isFewEmoji() -> ChatTheme.typography.emojiOnly
-        else -> ChatTheme.typography.bodyBold
+        else -> if (message.isMine(currentUser)) {
+            ChatTheme.ownMessageTheme.textStyle
+        } else {
+            ChatTheme.otherMessageTheme.textStyle
+        }
     }
-
-    if (annotations.isNotEmpty()) {
+    if (annotations.fastAny {
+            it.tag == AnnotationTagUrl || it.tag == AnnotationTagEmail || it.tag == AnnotationTagMention
+        }
+    ) {
         ClickableText(
             modifier = modifier
                 .padding(
                     start = 12.dp,
                     end = 12.dp,
                     top = 8.dp,
-                    bottom = 8.dp
-                ),
+                    bottom = 8.dp,
+                )
+                .testTag("Stream_MessageClickableText"),
             text = styledText,
             style = style,
-            onLongPress = { onLongItemClick(message) }
+            onLongPress = { onLongItemClick(message) },
         ) { position ->
-            val targetUrl = annotations.firstOrNull {
-                position in it.start..it.end
-            }?.item
-
-            if (targetUrl != null && targetUrl.isNotEmpty()) {
-                context.startActivity(
-                    Intent(
-                        Intent.ACTION_VIEW,
-                        Uri.parse(targetUrl)
-                    )
-                )
+            val annotation = annotations.firstOrNull { position in it.start..it.end }
+            if (annotation?.tag == AnnotationTagMention) {
+                message.mentionedUsers.getUserByNameOrId(annotation.item)?.let { onUserMentionClick.invoke(it) }
+            } else {
+                val targetUrl = annotation?.item
+                if (!targetUrl.isNullOrEmpty()) {
+                    onLinkClick?.invoke(message, targetUrl) ?: run {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl)),
+                        )
+                    }
+                }
             }
         }
     } else {
@@ -191,11 +127,12 @@ public fun MessageText(
             modifier = modifier
                 .padding(
                     horizontal = horizontalPadding,
-                    vertical = verticalPadding
+                    vertical = verticalPadding,
                 )
-                .clipToBounds(),
+                .clipToBounds()
+                .testTag("Stream_MessageText"),
             text = styledText,
-            style = style
+            style = style,
         )
     }
 }
@@ -228,7 +165,7 @@ private fun ClickableText(
                 layoutResult.value?.let { layoutResult ->
                     onClick(layoutResult.getOffsetForPosition(pos))
                 }
-            }
+            },
         )
     }
 
@@ -242,6 +179,18 @@ private fun ClickableText(
         onTextLayout = {
             layoutResult.value = it
             onTextLayout(it)
-        }
+        },
     )
+}
+
+@Preview
+@Composable
+private fun MessageTextPreview() {
+    ChatTheme {
+        MessageText(
+            message = Message(text = "Hello World!"),
+            currentUser = null,
+            onLongItemClick = {},
+        )
+    }
 }

@@ -19,10 +19,10 @@ package io.getstream.chat.android.offline.repository.integration
 import android.database.sqlite.SQLiteException
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.getstream.chat.android.offline.integration.BaseDomainTest2
-import io.getstream.chat.android.offline.randomAttachment
-import io.getstream.chat.android.offline.randomMessage
-import io.getstream.chat.android.test.randomString
-import kotlinx.coroutines.runBlocking
+import io.getstream.chat.android.randomAttachment
+import io.getstream.chat.android.randomMessage
+import io.getstream.chat.android.randomString
+import kotlinx.coroutines.test.runTest
 import org.amshove.kluent.coInvoking
 import org.amshove.kluent.`should be equal to`
 import org.amshove.kluent.shouldNotThrow
@@ -34,34 +34,40 @@ internal class MessageRepositoryTest : BaseDomainTest2() {
 
     @Test
     fun `Given message with 3 attachments When update it in DB Should keep only 3 newer attachments`(): Unit =
-        runBlocking {
-            val attachment1 = randomAttachment { url = "url1" }
-            val attachment2 = randomAttachment { url = "url2" }
-            val attachment3 = randomAttachment { url = "url3" }
-            val message = randomMessage(attachments = mutableListOf(attachment1, attachment2, attachment3))
+        runTest {
+            val attachment1 = randomAttachment(assetUrl = "url1")
+            val attachment2 = randomAttachment(assetUrl = "url2")
+            val attachment3 = randomAttachment(assetUrl = "url3")
+            val message = randomMessage(
+                attachments = mutableListOf(attachment1, attachment2, attachment3),
+                deletedAt = null,
+            )
             repos.insertMessage(message)
 
-            val newAttachment1 = attachment1.copy(url = "newUrl1")
-            val newAttachment2 = attachment2.copy(url = "newUrl2")
-            val newAttachment3 = attachment3.copy(url = "newUrl3")
-            message.attachments = mutableListOf(newAttachment1, newAttachment2, newAttachment3)
-            repos.insertMessage(message)
+            val newAttachment1 = attachment1.copy(assetUrl = "newUrl1")
+            val newAttachment2 = attachment2.copy(assetUrl = "newUrl2")
+            val newAttachment3 = attachment3.copy(assetUrl = "newUrl3")
+            repos.insertMessage(
+                message.copy(
+                    attachments = mutableListOf(newAttachment1, newAttachment2, newAttachment3),
+                ),
+            )
 
             val messageFromDb = requireNotNull(repos.selectMessage(message.id))
 
             messageFromDb.attachments.size `should be equal to` 3
-            messageFromDb.attachments[0].url `should be equal to` "newUrl1"
-            messageFromDb.attachments[1].url `should be equal to` "newUrl2"
-            messageFromDb.attachments[2].url `should be equal to` "newUrl3"
+            messageFromDb.attachments[0].assetUrl `should be equal to` "newUrl1"
+            messageFromDb.attachments[1].assetUrl `should be equal to` "newUrl2"
+            messageFromDb.attachments[2].assetUrl `should be equal to` "newUrl3"
         }
 
     @Test
-    fun `When selecting more than 999 messages Should not throw SQLiteException`(): Unit = runBlocking {
+    fun `When selecting more than 999 messages Should not throw SQLiteException`(): Unit = runTest {
         coInvoking { repos.selectMessages(List(1000) { randomString() }) } shouldNotThrow (SQLiteException::class)
     }
 
     @Test
-    fun `When inserting more than 999 messages Should not throw SQLiteException`(): Unit = runBlocking {
+    fun `When inserting more than 999 messages Should not throw SQLiteException`(): Unit = runTest {
         coInvoking { repos.insertMessages(List(1000) { randomMessage() }) } shouldNotThrow (SQLiteException::class)
     }
 }

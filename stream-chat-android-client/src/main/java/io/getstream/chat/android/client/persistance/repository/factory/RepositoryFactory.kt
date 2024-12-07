@@ -16,23 +16,22 @@
 
 package io.getstream.chat.android.client.persistance.repository.factory
 
-import io.getstream.chat.android.client.models.Message
-import io.getstream.chat.android.client.models.User
-import io.getstream.chat.android.client.persistance.repository.AttachmentRepository
 import io.getstream.chat.android.client.persistance.repository.ChannelConfigRepository
 import io.getstream.chat.android.client.persistance.repository.ChannelRepository
 import io.getstream.chat.android.client.persistance.repository.MessageRepository
 import io.getstream.chat.android.client.persistance.repository.QueryChannelsRepository
 import io.getstream.chat.android.client.persistance.repository.ReactionRepository
 import io.getstream.chat.android.client.persistance.repository.SyncStateRepository
+import io.getstream.chat.android.client.persistance.repository.ThreadsRepository
 import io.getstream.chat.android.client.persistance.repository.UserRepository
+import io.getstream.chat.android.models.Channel
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.models.User
 
 /**
  * Factory that creates all repositories of SDK.
  */
 public interface RepositoryFactory {
-
-    public fun <T : Any> get(classz: Class<T>): T
 
     /**
      * Creates [UserRepository]
@@ -61,6 +60,19 @@ public interface RepositoryFactory {
     public fun createQueryChannelsRepository(): QueryChannelsRepository
 
     /**
+     * Creates [ThreadsRepository].
+     *
+     * @param getUser Function returning a [User] for a given ID.
+     * @param getMessage Function returning a [Message] for a given ID.
+     * @param getChannel Function returning a [Channel] for a given ID.
+     */
+    public fun createThreadsRepository(
+        getUser: suspend (userId: String) -> User,
+        getMessage: suspend (messageId: String) -> Message?,
+        getChannel: suspend (cid: String) -> Channel?,
+    ): ThreadsRepository
+
+    /**
      * Creates [MessageRepository]
      *
      * @param getUser function that provides userId.
@@ -82,7 +94,13 @@ public interface RepositoryFactory {
     public fun createSyncStateRepository(): SyncStateRepository
 
     /**
-     * Creates [AttachmentRepository]
+     * Interface to delegate creation of [RepositoryFactory].
      */
-    public fun createAttachmentRepository(): AttachmentRepository
+    public interface Provider {
+
+        /**
+         * Create a [RepositoryFactory] for the given [User].
+         */
+        public fun createRepositoryFactory(user: User): RepositoryFactory
+    }
 }

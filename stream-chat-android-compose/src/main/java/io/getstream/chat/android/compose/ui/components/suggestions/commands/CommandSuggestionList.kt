@@ -29,13 +29,14 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import io.getstream.chat.android.client.models.Command
 import io.getstream.chat.android.compose.R
 import io.getstream.chat.android.compose.ui.components.suggestions.SuggestionList
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
+import io.getstream.chat.android.models.Command
 
 /**
  * Represents the command suggestion list popup.
@@ -61,35 +62,37 @@ public fun CommandSuggestionList(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(max = ChatTheme.dimens.suggestionListMaxHeight)
-            .padding(ChatTheme.dimens.suggestionListPadding),
+            .padding(ChatTheme.dimens.suggestionListPadding)
+            .testTag("Stream_SuggestionList"),
         headerContent = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(40.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
                     modifier = Modifier
                         .padding(horizontal = 8.dp)
-                        .size(24.dp),
+                        .size(24.dp)
+                        .testTag("Stream_SuggestionListTitle"),
                     painter = painterResource(id = R.drawable.stream_compose_ic_command),
                     tint = ChatTheme.colors.primaryAccent,
-                    contentDescription = null
+                    contentDescription = null,
                 )
                 Text(
                     text = stringResource(id = R.string.stream_compose_message_composer_instant_commands),
                     style = ChatTheme.typography.body,
                     maxLines = 1,
-                    color = ChatTheme.colors.textLowEmphasis
+                    color = ChatTheme.colors.textLowEmphasis,
                 )
             }
-        }
+        },
     ) {
         LazyColumn(horizontalAlignment = Alignment.CenterHorizontally) {
             items(
                 items = commands,
-                key = Command::name
+                key = Command::name,
             ) { command ->
                 itemContent(command)
             }

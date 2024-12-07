@@ -16,13 +16,12 @@
 
 package io.getstream.chat.android.client.socket
 
+import io.getstream.chat.android.PrivacySettings
 import io.getstream.chat.android.client.ChatClient
-import io.getstream.chat.android.client.experimental.socket.ws.OkHttpWebSocket
-import io.getstream.chat.android.client.experimental.socket.ws.WebSocketEventObserver
-import io.getstream.chat.android.client.logger.ChatLogger
-import io.getstream.chat.android.client.models.User
 import io.getstream.chat.android.client.parser.ChatParser
 import io.getstream.chat.android.client.token.TokenManager
+import io.getstream.chat.android.models.User
+import io.getstream.log.taggedLogger
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.UnsupportedEncodingException
@@ -34,24 +33,13 @@ internal class SocketFactory(
     private val tokenManager: TokenManager,
     private val httpClient: OkHttpClient = OkHttpClient(),
 ) {
-
-    private val logger = ChatLogger.get(SocketFactory::class.java.simpleName)
-
-    @Throws(UnsupportedEncodingException::class)
-    fun createSocket(eventsParser: EventsParser, connectionConf: ConnectionConf): Socket {
-        val request = buildRequest(connectionConf)
-        val newWebSocket = httpClient.newWebSocket(request, eventsParser)
-        logger.logI("new web socket: ${request.url}")
-        return Socket(newWebSocket, parser)
-    }
+    private val logger by taggedLogger("Chat:SocketFactory")
 
     @Throws(UnsupportedEncodingException::class)
-    fun createSocket(connectionConf: ConnectionConf): OkHttpWebSocket {
+    fun createSocket(connectionConf: ConnectionConf): StreamWebSocket {
         val request = buildRequest(connectionConf)
-        val eventsObserver = WebSocketEventObserver()
-        httpClient.newWebSocket(request, eventsObserver)
-        logger.logI("new web socket: ${request.url}")
-        return OkHttpWebSocket(eventsObserver, parser)
+        logger.i { "new web socket: ${request.url}" }
+        return StreamWebSocket(parser) { httpClient.newWebSocket(request, it) }
     }
 
     @Throws(UnsupportedEncodingException::class)
@@ -71,10 +59,12 @@ internal class SocketFactory(
                 is ConnectionConf.AnonymousConnectionConf -> "$baseWsUrl&stream-auth-type=anonymous"
                 is ConnectionConf.UserConnectionConf -> {
                     val token = tokenManager.getToken()
+                        .takeUnless { connectionConf.isReconnection }
+                        ?: tokenManager.loadSync()
                     "$baseWsUrl&authorization=$token&stream-auth-type=jwt"
                 }
             }
-        } catch (_: Throwable) {
+        } catch (_: UnsupportedEncodingException) {
             throw UnsupportedEncodingException("Unable to encode user details json: $json")
         }
     }
@@ -98,13 +88,35 @@ internal class SocketFactory(
     private fun ConnectionConf.reduceUserDetails(): Map<String, Any> = mutableMapOf<String, Any>("id" to id)
         .apply {
             if (!isReconnection) {
-                put("role", user.role)
-                put("banned", user.banned)
-                put("invisible", user.invisible)
-                put("teams", user.teams)
+                if (user.role.isNotBlank()) put("role", user.role)
+                user.banned?.also { put("banned", it) }
+                user.invisible?.also { put("invisible", it) }
+                user.privacySettings?.also { put("privacy_settings", it.reducePrivacySettings()) }
+                if (user.teams.isNotEmpty()) put("teams", user.teams)
+                if (user.language.isNotBlank()) put("language", user.language)
                 if (user.image.isNotBlank()) put("image", user.image)
                 if (user.name.isNotBlank()) put("name", user.name)
                 putAll(user.extraData)
+            }
+        }
+
+    private fun PrivacySettings.reducePrivacySettings(): Map<String, Any> = mutableMapOf<String, Any>()
+        .apply {
+            typingIndicators?.also {
+                put(
+                    "typing_indicators",
+                    mapOf<String, Any>(
+                        "enabled" to it.enabled,
+                    ),
+                )
+            }
+            readReceipts?.also {
+                put(
+                    "read_receipts",
+                    mapOf<String, Any>(
+                        "enabled" to it.enabled,
+                    ),
+                )
             }
         }
 

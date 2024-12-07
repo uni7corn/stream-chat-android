@@ -2,10 +2,51 @@
 <SmellBaseline>
   <ManuallySuppressedIssues/>
   <CurrentIssues>
-    <ID>ComplexMethod:MessageFooterVisibility.kt$ @InternalStreamChatApi public fun MessageFooterVisibility.shouldShowMessageFooter( message: Message, isLastMessageInGroup: Boolean, nextMessage: Message?, ): Boolean</ID>
-    <ID>LongMethod:MessageListItemLiveData.kt$MessageListItemLiveData$ @Suppress("ComplexMethod") private fun groupMessages(messages: List&lt;Message>?, currentUserId: String): List&lt;MessageListItem></ID>
-    <ID>LongParameterList:Linkify.kt$Linkify$( links: MutableList&lt;LinkSpec>, s: Spannable, pattern: Pattern, schemes: Array&lt;String>, matchFilter: Linkify.MatchFilter?, transformFilter: Linkify.TransformFilter?, )</ID>
-    <ID>MagicNumber:MessageOptionsUserReactionAlignment.kt$MessageOptionsUserReactionAlignment.BY_USER_INVERTED$3</ID>
-    <ID>NestedBlockDepth:Linkify.kt$Linkify$private fun pruneOverlaps(links: MutableList&lt;LinkSpec>, text: Spannable)</ID>
+    <ID>LargeClass:MessageListController.kt$MessageListController</ID>
+    <ID>LongMethod:MessageListController.kt$MessageListController$@Suppress("MagicNumber") private fun observeMessagesListState()</ID>
+    <ID>LongParameterList:MessagePositionHandler.kt$MessagePositionHandler$( previousMessage: Message?, message: Message, nextMessage: Message?, isAfterDateSeparator: Boolean, isBeforeDateSeparator: Boolean, isInThread: Boolean, )</ID>
+    <ID>MagicNumber:AudioRecordingController.kt$AudioRecordingController$10</ID>
+    <ID>MagicNumber:AudioRecordingController.kt$AudioRecordingController$100</ID>
+    <ID>MagicNumber:AudioRecordingController.kt$AudioRecordingController$20</ID>
+    <ID>MagicNumber:AudioRecordingController.kt$AudioRecordingController$20_000</ID>
+    <ID>MagicNumber:AudioRecordingController.kt$AudioRecordingController$32767f</ID>
+    <ID>MagicNumber:AudioRecordingController.kt$AudioRecordingController$50</ID>
+    <ID>MagicNumber:AudioRecordingController.kt$AudioRecordingController$90.0</ID>
+    <ID>MagicNumber:DefaultStreamMediaRecorder.kt$DefaultStreamMediaRecorder$1000</ID>
+    <ID>MagicNumber:DefaultStreamMediaRecorder.kt$DefaultStreamMediaRecorder$1000f</ID>
+    <ID>MagicNumber:DefaultStreamMediaRecorder.kt$DefaultStreamMediaRecorder$20</ID>
+    <ID>MagicNumber:DefaultStreamMediaRecorder.kt$DefaultStreamMediaRecorder$31</ID>
+    <ID>MagicNumber:DurationFormatter.kt$DurationFormatter$1000</ID>
+    <ID>MaxLineLength:AudioPlayerController.kt$AudioPlayerController$seekTo</ID>
+    <ID>MaxLineLength:MessageListController.kt$MessageListController$val hasDateSeparatorAfter = nextMessage?.let { dateSeparatorHandler.shouldAddDateSeparator(message, it) } ?: false</ID>
+    <ID>ReturnCount:AudioPlayerController.kt$AudioPlayerController$public fun changeSpeed(attachment: Attachment)</ID>
+    <ID>ReturnCount:AudioPlayerController.kt$AudioPlayerController$public fun resetAudio(attachment: Attachment)</ID>
+    <ID>ReturnCount:AudioPlayerController.kt$AudioPlayerController$public fun resume()</ID>
+    <ID>ReturnCount:AudioPlayerController.kt$AudioPlayerController$public fun startSeek(attachment: Attachment)</ID>
+    <ID>ReturnCount:AudioRecordingController.kt$AudioRecordingController$public fun completeRecording()</ID>
+    <ID>ReturnCount:AudioRecordingController.kt$AudioRecordingController$public fun toggleRecordingPlayback()</ID>
+    <ID>ReturnCount:DefaultQueryFilter.kt$DefaultQueryFilter$private fun levenshteinDistance(search: String, target: String): Int</ID>
+    <ID>ReturnCount:DefaultQueryFilter.kt$DefaultQueryFilter$private fun wordLevenshteinDistance(search: String, target: String): Int</ID>
+    <ID>ReturnCount:StorageHelper.kt$StorageHelper$public fun getCachedFileFromUri( context: Context, attachmentMetaData: AttachmentMetaData, ): File?</ID>
+    <ID>ReturnCount:TypingSuggester.kt$TypingSuggester$internal fun typingSuggestion(text: CharSequence, caretLocation: Int = text.length): TypingSuggestion?</ID>
+    <ID>TooGenericExceptionCaught:DefaultQueryFilter.kt$DefaultQueryFilter$e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:DefaultStreamMediaRecorder.kt$DefaultStreamMediaRecorder$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:DefaultStreamMediaRecorder.kt$DefaultStreamMediaRecorder$e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:DefaultStreamMediaRecorder.kt$DefaultStreamMediaRecorder$exception: Exception</ID>
+    <ID>TooGenericExceptionCaught:DefaultStreamTransliterator.kt$DefaultStreamTransliterator$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:LocalUserLookupHandler.kt$LocalUserLookupHandler$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:StreamFileUtil.kt$StreamFileUtil$e: Exception</ID>
+    <ID>TooManyFunctions:AudioRecordingController.kt$AudioRecordingController</ID>
+    <ID>TooManyFunctions:MessageListController.kt$MessageListController</ID>
+    <ID>TooManyFunctions:StreamMediaRecorder.kt$StreamMediaRecorder</ID>
+    <ID>UnusedPrivateMember:AudioRecordingController.kt$AudioRecordingController$private fun FloatArray.downsample(): Float</ID>
+    <ID>UnusedPrivateMember:AudioRecordingController.kt$AudioRecordingController$private fun FloatArray.downsampleAverage(): Float</ID>
+    <ID>UnusedPrivateMember:AudioRecordingController.kt$AudioRecordingController$private fun FloatArray.downsampleRms(): Float</ID>
+    <ID>UnusedPrivateMember:AudioRecordingController.kt$AudioRecordingController$private fun IntArray.downsampleRms(): Int</ID>
+    <ID>UnusedPrivateMember:AudioRecordingController.kt$AudioRecordingController$private fun List&lt;Float>.downsample(targetSamples: Int): List&lt;Float></ID>
+    <ID>UnusedPrivateMember:AudioRecordingController.kt$AudioRecordingController$private fun List&lt;Int>.downsampleToSingleMax(): Int</ID>
+    <ID>UnusedPrivateMember:DefaultQueryFilter.kt$DefaultQueryFilter$private fun minLevenshteinDistance(search: String, target: String): Int</ID>
+    <ID>VariableNaming:AudioRecordingController.kt$AudioRecordingController$val MAX_AMPLITUDE = 32767f</ID>
+    <ID>VariableNaming:AudioRecordingController.kt$AudioRecordingController$val MAX_DB = 90.0 // Maximum decibel level for normalization</ID>
   </CurrentIssues>
 </SmellBaseline>

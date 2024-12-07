@@ -4,19 +4,17 @@ import android.content.Context
 import io.getstream.chat.android.client.ChatClient
 import io.getstream.chat.android.client.api.models.PinnedMessagesPagination
 import io.getstream.chat.android.client.api.models.QueryChannelRequest
-import io.getstream.chat.android.client.api.models.QuerySort
-import io.getstream.chat.android.client.api.models.querysort.QuerySortByField
 import io.getstream.chat.android.client.channel.ChannelClient
-import io.getstream.chat.android.client.errors.ChatError
-import io.getstream.chat.android.client.models.Attachment
-import io.getstream.chat.android.client.models.Filters
-import io.getstream.chat.android.client.models.Message
-import io.getstream.chat.android.client.models.Reaction
-import io.getstream.chat.android.client.models.SearchMessagesResult
-import io.getstream.chat.android.client.models.User
-import io.getstream.chat.android.client.models.getTranslation
 import io.getstream.chat.android.client.utils.ProgressCallback
+import io.getstream.chat.android.models.Attachment
+import io.getstream.chat.android.models.Filters
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.models.Reaction
+import io.getstream.chat.android.models.User
+import io.getstream.chat.android.models.querysort.QuerySortByField
 import io.getstream.chat.docs.kotlin.client.helpers.MyFileUploader
+import io.getstream.result.Result
+import io.getstream.result.Error
 import java.io.File
 import java.util.Calendar
 import java.util.Date
@@ -39,10 +37,13 @@ class Messages(
             )
 
             channelClient.sendMessage(message).enqueue { result ->
-                if (result.isSuccess) {
-                    val sentMessage: Message = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val sentMessage: Message = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
 
@@ -79,10 +80,13 @@ class Messages(
          */
         fun getAMessage() {
             channelClient.getMessage("message-id").enqueue { result ->
-                if (result.isSuccess) {
-                    val message = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val message: Message = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -92,14 +96,17 @@ class Messages(
          */
         fun updateAMessage() {
             // Update some field of the message
-            message.text = "my updated text"
+            val updatedMessage = message.copy(text = "my updated text")
 
             // Send the message to the channel
-            channelClient.updateMessage(message).enqueue { result ->
-                if (result.isSuccess) {
-                    val updatedMessage = result.data()
-                } else {
-                    // Handle result.error()
+            channelClient.updateMessage(updatedMessage).enqueue { result ->
+                when (result) {
+                    is Result.Success -> {
+                        val updatedMessage: Message = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -109,10 +116,13 @@ class Messages(
          */
         fun deleteAMessage() {
             channelClient.deleteMessage("message-id").enqueue { result ->
-                if (result.isSuccess) {
-                    val deletedMessage = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val deletedMessage: Message = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -142,18 +152,23 @@ class Messages(
 
             // Upload an image without detailed progress
             channelClient.sendImage(imageFile).enqueue { result ->
-                if (result.isSuccess) {
-                    // Successful upload, you can now attach this image
-                    // to an message that you then send to a channel
-                    val imageUrl = result.data()
-                    val attachment = Attachment(
-                        type = "image",
-                        imageUrl = imageUrl,
-                    )
-                    val message = Message(
-                        attachments = mutableListOf(attachment),
-                    )
-                    channelClient.sendMessage(message).enqueue { /* ... */ }
+                when (result) {
+                    is Result.Success -> {
+                        // Successful upload, you can now attach this image
+                        // to a message that you then send to a channel
+                        val imageUrl = result.value.file
+                        val attachment = Attachment(
+                            type = "image",
+                            imageUrl = imageUrl,
+                        )
+                        val message = Message(
+                            attachments = mutableListOf(attachment),
+                        )
+                        channelClient.sendMessage(message).enqueue { /* ... */ }
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
 
@@ -165,7 +180,7 @@ class Messages(
                         val fileUrl = url
                     }
 
-                    override fun onError(error: ChatError) {
+                    override fun onError(error: Error) {
                         // Handle error
                     }
 
@@ -212,19 +227,25 @@ class Messages(
                 extraData = mutableMapOf("customField" to 1),
             )
             channelClient.sendReaction(reaction).enqueue { result ->
-                if (result.isSuccess) {
-                    val sentReaction: Reaction = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val sentReaction: Reaction = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
 
             // Add reaction 'like' and replace all other reactions of this user by it
             channelClient.sendReaction(reaction, enforceUnique = true).enqueue { result ->
-                if (result.isSuccess) {
-                    val sentReaction = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val sentReaction: Reaction = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -237,10 +258,13 @@ class Messages(
                 messageId = "message-id",
                 reactionType = "like",
             ).enqueue { result ->
-                if (result.isSuccess) {
-                    val message = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val message = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -255,10 +279,13 @@ class Messages(
                 offset = 0,
                 limit = 10,
             ).enqueue { result ->
-                if (result.isSuccess) {
-                    val reactions: List<Reaction> = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val reactions = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
 
@@ -298,10 +325,13 @@ class Messages(
 
             // Send the message to the channel
             channelClient.sendMessage(message).enqueue { result ->
-                if (result.isSuccess) {
-                    val sentMessage = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val sentMessage = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -312,10 +342,13 @@ class Messages(
         fun threadPagination() {
             // Retrieve the first 20 messages inside the thread
             client.getReplies(parentMessage.id, limit = 20).enqueue { result ->
-                if (result.isSuccess) {
-                    val replies: List<Message> = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val replies = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
 
@@ -365,41 +398,15 @@ class Messages(
                 channelFilter = Filters.`in`("members", listOf("john")),
                 messageFilter = Filters.autocomplete("text", "supercalifragilisticexpialidocious"),
             ).enqueue { result ->
-                if (result.isSuccess) {
-                    val messages: List<Message> = result.data().messages
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val messages = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
-        }
-
-        fun searchMessagesLimitAndNextPagination() {
-            val channelFilter = Filters.`in`("members", listOf("john"))
-            val messageFilter = Filters.autocomplete("text", "supercalifragilisticexpialidocious")
-
-            // First 10 results sorted by relevance in descending order
-            val page1: SearchMessagesResult = client.searchMessages(
-                channelFilter = channelFilter,
-                messageFilter = messageFilter,
-                limit = 10,
-                sort = QuerySortByField.descByName("relevance")
-            ).execute().data()
-
-            // Next 10 results with the same sort order embedded in the next value
-            val page2: SearchMessagesResult = client.searchMessages(
-                channelFilter = channelFilter,
-                messageFilter = messageFilter,
-                limit = 10,
-                next = page1.previous
-            ).execute().data()
-
-            // The previous 10 results
-            val page1Again: SearchMessagesResult = client.searchMessages(
-                channelFilter = channelFilter,
-                messageFilter = messageFilter,
-                limit = 10,
-                next = page2.previous
-            ).execute().data()
         }
     }
 
@@ -436,10 +443,13 @@ class Messages(
 
         fun retrievePinnedMessages() {
             channelClient.query(QueryChannelRequest()).enqueue { result ->
-                if (result.isSuccess) {
-                    val pinnedMessages: List<Message> = result.data().pinnedMessages
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val pinnedMessages = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -448,16 +458,19 @@ class Messages(
             // List the first page of pinned messages, pinned before now, of the channel with descending direction (newest on top)
             channelClient.getPinnedMessages(
                 limit = 10,
-                sort = QuerySortByField.descByName("pinned_at"),
+                sort = QuerySortByField.descByName("pinnedAt"),
                 pagination = PinnedMessagesPagination.BeforeDate(
                     date = Date(),
                     inclusive = false,
                 ),
             ).enqueue { result ->
-                if (result.isSuccess) {
-                    val pinnedMessages: List<Message> = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val pinnedMessages = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
 
@@ -466,16 +479,19 @@ class Messages(
             // List the next page of pinned messages
             channelClient.getPinnedMessages(
                 limit = 10,
-                sort = QuerySortByField.descByName("pinned_at"),
+                sort = QuerySortByField.descByName("pinnedAt"),
                 pagination = PinnedMessagesPagination.BeforeDate(
                     date = nextDate,
                     inclusive = false,
                 ),
             ).enqueue { result ->
-                if (result.isSuccess) {
-                    val pinnedMessages: List<Message> = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val pinnedMessages = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -492,20 +508,26 @@ class Messages(
             val message = Message(text = "Hello, I would like to have more information about your product.")
 
             channelClient.sendMessage(message).enqueue { result ->
-                if (result.isSuccess) {
-                    val messageId = result.data().id
-                    val frenchLanguage = "fr"
+                when (result) {
+                    is Result.Success -> {
+                        val messageId = result.value.id
+                        val frenchLanguage = "fr"
 
-                    client.translate(messageId, frenchLanguage).enqueue { translationResult ->
-                        if (translationResult.isSuccess) {
-                            val translatedMessage = translationResult.data()
-                            val translation = translatedMessage.getTranslation(frenchLanguage)
-                        } else {
-                            // Handle translationResult.error()
+                        client.translate(messageId, frenchLanguage).enqueue { translationResult ->
+                            when (translationResult) {
+                                is Result.Success -> {
+                                    val translatedMessage = translationResult.value
+                                    val translation = translatedMessage.getTranslation(frenchLanguage)
+                                }
+                                is Result.Failure -> {
+                                    // Handle translationResult error
+                                }
+                            }
                         }
                     }
-                } else {
-                    // Handle result.error()
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }

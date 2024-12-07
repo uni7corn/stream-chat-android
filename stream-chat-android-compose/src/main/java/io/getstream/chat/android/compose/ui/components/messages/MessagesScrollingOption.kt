@@ -26,11 +26,11 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import io.getstream.chat.android.compose.R
@@ -53,23 +53,23 @@ internal fun MessagesScrollingOption(
     Box(
         modifier = modifier
             .padding(16.dp)
-            .wrapContentSize()
+            .wrapContentSize(),
     ) {
         Surface(
+            onClick = onClick,
             modifier = Modifier
                 .padding(top = 12.dp)
-                .size(48.dp),
+                .size(48.dp)
+                .testTag("Stream_ScrollToBottomButton"),
             shape = CircleShape,
             elevation = 4.dp,
-            indication = rememberRipple(),
-            onClick = onClick,
-            color = ChatTheme.colors.barsBackground
+            color = ChatTheme.colors.barsBackground,
         ) {
             Icon(
                 modifier = Modifier.padding(16.dp),
                 painter = painterResource(R.drawable.stream_compose_ic_arrow_down),
                 contentDescription = null,
-                tint = ChatTheme.colors.primaryAccent
+                tint = ChatTheme.colors.primaryAccent,
             )
         }
 
@@ -78,13 +78,13 @@ internal fun MessagesScrollingOption(
                 modifier = Modifier
                     .align(Alignment.TopCenter),
                 shape = RoundedCornerShape(16.dp),
-                color = ChatTheme.colors.primaryAccent
+                color = ChatTheme.colors.primaryAccent,
             ) {
                 Text(
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                     text = unreadCount.toString(),
                     style = ChatTheme.typography.footnoteBold,
-                    color = Color.White
+                    color = Color.White,
                 )
             }
         }

@@ -18,15 +18,18 @@ package io.getstream.chat.android.client.chatclient
 
 import io.getstream.chat.android.client.ChatClient
 import io.getstream.chat.android.client.api.models.QueryChannelRequest
-import io.getstream.chat.android.client.call.CoroutineCall
-import io.getstream.chat.android.client.errors.ChatError
-import io.getstream.chat.android.client.models.Channel
 import io.getstream.chat.android.client.plugin.Plugin
 import io.getstream.chat.android.client.plugin.listeners.QueryChannelListener
-import io.getstream.chat.android.client.utils.Result
+import io.getstream.chat.android.models.Channel
 import io.getstream.chat.android.test.asCall
+import io.getstream.result.Error
+import io.getstream.result.Result
+import io.getstream.result.call.CoroutineCall
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runTest
 import org.amshove.kluent.`should be`
 import org.amshove.kluent.`should be equal to`
+import org.amshove.kluent.shouldBeInstanceOf
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doAnswer
@@ -34,43 +37,50 @@ import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
+@OptIn(ExperimentalCoroutinesApi::class)
 internal class WhenQueryChannel : BaseChatClientTest() {
 
     @Test
-    fun `Given offline plugin with failing precondition Should not make API call and return error result`() {
+    fun `Given offline plugin with failing precondition Should not make API call and return error result`() = runTest {
         val plugin = mock<QueryChannelListenerPlugin> {
-            onBlocking { it.onQueryChannelPrecondition(any(), any(), any()) } doReturn Result.error(ChatError())
+            onBlocking { it.onQueryChannelPrecondition(any(), any(), any()) } doReturn Result.Failure(Error.GenericError(message = ""))
         }
         var isNetworkApiCalled = false
-        val sut = Fixture().givenPlugin(plugin).givenChannelResponse { isNetworkApiCalled = true; mock() }.get()
+        val sut = Fixture().givenPlugin(plugin).givenChannelResponse {
+            isNetworkApiCalled = true
+            mock()
+        }.get()
 
-        val result = sut.queryChannel("channelType", "channelId", QueryChannelRequest()).execute()
+        val result = sut.queryChannel("channelType", "channelId", QueryChannelRequest()).await()
 
-        result.isError `should be` true
+        result shouldBeInstanceOf Result.Failure::class
         isNetworkApiCalled `should be` false
     }
 
     @Test
-    fun `Given offline plugin with success precondition Should make API call and return it's result`() {
+    fun `Given offline plugin with success precondition Should make API call and return it's result`() = runTest {
         val plugin = mock<QueryChannelListenerPlugin> {
-            onBlocking { it.onQueryChannelPrecondition(any(), any(), any()) } doReturn Result.success(Unit)
+            onBlocking { it.onQueryChannelPrecondition(any(), any(), any()) } doReturn Result.Success(Unit)
         }
         var isNetworkApiCalled = false
-        val sut = Fixture().givenPlugin(plugin).givenChannelResponse { isNetworkApiCalled = true; mock() }.get()
+        val sut = Fixture().givenPlugin(plugin).givenChannelResponse {
+            isNetworkApiCalled = true
+            mock()
+        }.get()
 
-        val result = sut.queryChannel("channelType", "channelId", QueryChannelRequest()).execute()
+        val result = sut.queryChannel("channelType", "channelId", QueryChannelRequest()).await()
 
-        result.isSuccess `should be` true
+        result shouldBeInstanceOf Result.Success::class
         isNetworkApiCalled `should be` true
     }
 
     @Test
-    fun `Given offline plugin with success precondition Should invoke methods in right order`() {
+    fun `Given offline plugin with success precondition Should invoke methods in right order`() = runTest {
         val list = mutableListOf<Int>()
         val plugin = mock<QueryChannelListenerPlugin> {
             onBlocking { it.onQueryChannelPrecondition(any(), any(), any()) } doAnswer {
                 list.add(1)
-                Result.success(Unit)
+                Result.Success(Unit)
             }
             onBlocking { it.onQueryChannelRequest(any(), any(), any()) } doAnswer {
                 list.add(2)
@@ -87,7 +97,7 @@ internal class WhenQueryChannel : BaseChatClientTest() {
             mock()
         }.get()
 
-        sut.queryChannel("channelType", "channelId", QueryChannelRequest()).execute()
+        sut.queryChannel("channelType", "channelId", QueryChannelRequest(), skipOnRequest = false).await()
 
         list `should be equal to` listOf(1, 2, 3, 4)
     }
@@ -104,14 +114,14 @@ internal class WhenQueryChannel : BaseChatClientTest() {
 
         fun givenChannelResponse(channelProvider: () -> Channel) = apply {
             whenever(api.queryChannel(any(), any(), any())) doAnswer {
-                CoroutineCall(coroutineRule.scope) {
-                    Result.success(channelProvider())
+                CoroutineCall(testCoroutines.scope) {
+                    Result.Success(channelProvider())
                 }
             }
         }
 
         fun get(): ChatClient = chatClient.apply {
-            addPlugins(this@WhenQueryChannel.plugins)
+            plugins = this@WhenQueryChannel.plugins
         }
     }
 }

@@ -17,58 +17,67 @@
 package io.getstream.chat.android.client
 
 import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.ProcessLifecycleOwner
 import io.getstream.chat.android.core.internal.coroutines.DispatcherProvider
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
+import io.getstream.log.taggedLogger
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicBoolean
 
-internal class StreamLifecycleObserver(private val handler: LifecycleHandler) : DefaultLifecycleObserver {
+internal class StreamLifecycleObserver(
+    private val scope: CoroutineScope,
+    private val lifecycle: Lifecycle,
+) : DefaultLifecycleObserver {
+
+    private val logger by taggedLogger("Chat:LifecycleObserver")
     private var recurringResumeEvent = false
+    private var handlers = setOf<LifecycleHandler>()
 
-    @Volatile
-    private var isObserving = false
+    private val isObserving = AtomicBoolean(false)
 
-    fun observe() {
-        if (isObserving.not()) {
-            isObserving = true
-            @OptIn(DelicateCoroutinesApi::class)
-            GlobalScope.launch(DispatcherProvider.Main) {
-                ProcessLifecycleOwner.get()
-                    .lifecycle
-                    .addObserver(this@StreamLifecycleObserver)
+    suspend fun observe(handler: LifecycleHandler) {
+        if (isObserving.compareAndSet(false, true)) {
+            recurringResumeEvent = false
+            withContext(DispatcherProvider.Main) {
+                lifecycle.addObserver(this@StreamLifecycleObserver)
+                logger.v { "[observe] subscribed" }
             }
         }
+        handlers = handlers + handler
     }
 
-    fun dispose() {
-        if (isObserving) {
-            @OptIn(DelicateCoroutinesApi::class)
-            GlobalScope.launch(DispatcherProvider.Main) {
-                ProcessLifecycleOwner.get()
-                    .lifecycle
-                    .removeObserver(this@StreamLifecycleObserver)
+    suspend fun dispose(handler: LifecycleHandler) {
+        handlers = handlers - handler
+        if (handlers.isEmpty() && isObserving.compareAndSet(true, false)) {
+            withContext(DispatcherProvider.Main) {
+                lifecycle.removeObserver(this@StreamLifecycleObserver)
+                logger.v { "[dispose] unsubscribed" }
             }
         }
-        isObserving = false
-        recurringResumeEvent = false
     }
 
     override fun onResume(owner: LifecycleOwner) {
+        logger.d { "[onResume] owner: $owner, recurringResumeEvent: $recurringResumeEvent" }
         // ignore event when we just started observing the lifecycle
         if (recurringResumeEvent) {
-            handler.resume()
+            scope.launch {
+                handlers.forEach { it.resume() }
+            }
         }
         recurringResumeEvent = true
     }
 
     override fun onStop(owner: LifecycleOwner) {
-        handler.stopped()
+        scope.launch {
+            logger.d { "[onStop] owner: $owner" }
+            handlers.forEach { it.stopped() }
+        }
     }
 }
 
 internal interface LifecycleHandler {
-    fun resume()
-    fun stopped()
+    suspend fun resume()
+    suspend fun stopped()
 }

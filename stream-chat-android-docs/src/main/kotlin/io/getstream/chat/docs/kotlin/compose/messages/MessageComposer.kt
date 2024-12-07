@@ -20,14 +20,15 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material.Icon
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
-import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import com.getstream.sdk.chat.utils.typing.DefaultTypingUpdatesBuffer
 import io.getstream.chat.android.compose.ui.components.composer.MessageInput
 import io.getstream.chat.android.compose.ui.messages.composer.MessageComposer
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
@@ -43,6 +44,7 @@ import io.getstream.chat.docs.R
 private object MessageComposerUsageSnippet {
 
     class MyActivity : AppCompatActivity() {
+
         val factory by lazy {
             MessagesViewModelFactory(
                 context = this,
@@ -96,6 +98,7 @@ private object MessageComposerUsageSnippet {
 private object MessageComposerHandlingActionsSnippet {
 
     class MyActivity : AppCompatActivity() {
+
         val factory by lazy {
             MessagesViewModelFactory(
                 context = this,
@@ -146,18 +149,12 @@ private object HandlingTypingUpdatesSnippet {
         override fun onCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
             super.onCreate(savedInstanceState, persistentState)
 
+            // This needs to be commented out or the docs module build will fail
+            /*
             composerViewModel.setTypingUpdatesBuffer(
-                DefaultTypingUpdatesBuffer(
-                    onTypingStarted = {
-                        // Make a keystroke API call
-                        // Implement your custom action
-                    },
-                    onTypingStopped = {
-                        // Make a typing stopped API call
-                        // Implement your custom action
-                    }
-                )
+                // Your custom implementation of TypingUpdatesBuffer
             )
+            */
         }
     }
 }
@@ -168,6 +165,7 @@ private object HandlingTypingUpdatesSnippet {
 private object MessageComposerCustomizationSnippet {
 
     class MyActivity : AppCompatActivity() {
+
         val factory by lazy {
             MessagesViewModelFactory(
                 context = this,
@@ -210,7 +208,7 @@ private object MessageComposerCustomizationSnippet {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    painter = painterResource(R.drawable.ic_keyboard),
+                                    imageVector = Icons.Default.Email,
                                     contentDescription = null
                                 )
 
@@ -227,13 +225,14 @@ private object MessageComposerCustomizationSnippet {
                                     .size(24.dp)
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
-                                        indication = rememberRipple()
+                                        indication = ripple()
                                     ) {
                                         val state = composerViewModel.messageComposerState.value
 
                                         composerViewModel.sendMessage(
                                             composerViewModel.buildNewMessage(
-                                                state.inputValue, state.attachments
+                                                state.inputValue,
+                                                state.attachments
                                             )
                                         )
                                     },

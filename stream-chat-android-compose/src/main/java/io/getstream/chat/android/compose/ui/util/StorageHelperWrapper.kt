@@ -18,10 +18,10 @@ package io.getstream.chat.android.compose.ui.util
 
 import android.content.Context
 import android.net.Uri
-import com.getstream.sdk.chat.model.AttachmentMetaData
-import com.getstream.sdk.chat.utils.AttachmentFilter
-import com.getstream.sdk.chat.utils.StorageHelper
-import io.getstream.chat.android.client.models.Attachment
+import io.getstream.chat.android.models.Attachment
+import io.getstream.chat.android.ui.common.helper.internal.AttachmentFilter
+import io.getstream.chat.android.ui.common.helper.internal.StorageHelper
+import io.getstream.chat.android.ui.common.state.messages.composer.AttachmentMetaData
 
 /**
  * Wrapper around the [StorageHelper] class, with some extra functionality that makes it easier to
@@ -81,9 +81,10 @@ public class StorageHelperWrapper(
             Attachment(
                 upload = fileFromUri,
                 type = it.type,
-                name = it.title ?: fileFromUri.name ?: "",
+                name = it.title ?: fileFromUri?.name ?: "",
                 fileSize = it.size.toInt(),
-                mimeType = it.mimeType
+                mimeType = it.mimeType,
+                extraData = it.extraData,
             )
         }
     }
@@ -96,8 +97,17 @@ public class StorageHelperWrapper(
      * @return List of [Attachment]s with files prepared for uploading.
      */
     public fun getAttachmentsFromUris(uris: List<Uri>): List<Attachment> {
+        return getAttachmentsMetadataFromUris(uris).let(::getAttachmentsFromMetaData)
+    }
+
+    /**
+     * Takes a list of file Uris and transforms them into a list of [AttachmentMetaData].
+     *
+     * @param uris Selected file Uris, to be transformed.
+     * @return List of [AttachmentMetaData] that describe the files.
+     */
+    public fun getAttachmentsMetadataFromUris(uris: List<Uri>): List<AttachmentMetaData> {
         return storageHelper.getAttachmentsFromUriList(context, uris)
             .let(attachmentFilter::filterAttachments)
-            .let(::getAttachmentsFromMetaData)
     }
 }

@@ -39,7 +39,8 @@ internal object AttachmentDtoTestData {
           "title": "title",
           "title_link": "titleLink",
           "type": "type",
-          "url": "url",
+          "original_height": 100,
+          "original_width": 100,
           "draft": true
         }
         """.withoutWhitespace()
@@ -59,7 +60,8 @@ internal object AttachmentDtoTestData {
         title = "title",
         title_link = "titleLink",
         type = "type",
-        url = "url",
+        original_height = 100,
+        original_width = 100,
         extraData = mapOf("draft" to true),
     )
 
@@ -85,7 +87,8 @@ internal object AttachmentDtoTestData {
         title = null,
         title_link = null,
         type = null,
-        url = null,
+        original_width = null,
+        original_height = null,
         extraData = emptyMap(),
     )
 }

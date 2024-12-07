@@ -17,85 +17,116 @@
 package io.getstream.chat.android.compose.sample
 
 import android.content.Context
+import android.util.Log
+import io.getstream.android.push.firebase.FirebasePushDeviceGenerator
 import io.getstream.chat.android.client.ChatClient
-import io.getstream.chat.android.client.errors.ChatError
 import io.getstream.chat.android.client.logger.ChatLogLevel
 import io.getstream.chat.android.client.notifications.handler.NotificationConfig
 import io.getstream.chat.android.client.notifications.handler.NotificationHandlerFactory
 import io.getstream.chat.android.compose.sample.data.UserCredentials
 import io.getstream.chat.android.compose.sample.ui.StartupActivity
-import io.getstream.chat.android.core.internal.InternalStreamChatApi
-import io.getstream.chat.android.offline.plugin.configuration.Config
+import io.getstream.chat.android.models.Channel
+import io.getstream.chat.android.models.InitializationState
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.models.UploadAttachmentsNetworkType
 import io.getstream.chat.android.offline.plugin.factory.StreamOfflinePluginFactory
-import io.getstream.chat.android.pushprovider.firebase.FirebasePushDeviceGenerator
+import io.getstream.chat.android.state.plugin.config.StatePluginConfig
+import io.getstream.chat.android.state.plugin.factory.StreamStatePluginFactory
+import io.getstream.result.Error
+import kotlinx.coroutines.flow.transformWhile
 
 /**
  * A helper class that is responsible for initializing the SDK and connecting/disconnecting
  * a user. Under the hood, it persists the user so that we are able to connect automatically
  * next time the app is launched.
  */
-@OptIn(InternalStreamChatApi::class)
 object ChatHelper {
+
+    private const val TAG = "ChatHelper"
 
     /**
      * Initializes the SDK with the given API key.
      */
-    fun initializeSdk(context: Context, apiKey: String) {
+    fun initializeSdk(context: Context, apiKey: String, baseUrl: String? = null) {
+        Log.d(TAG, "[init] apiKey: $apiKey")
         val notificationConfig = NotificationConfig(
-            pushDeviceGenerators = listOf(FirebasePushDeviceGenerator())
+            pushDeviceGenerators = listOf(FirebasePushDeviceGenerator(providerName = "Firebase")),
+            autoTranslationEnabled = ChatApp.autoTranslationEnabled,
         )
         val notificationHandler = NotificationHandlerFactory.createNotificationHandler(
             context = context,
-            newMessageIntent = { _: String, channelType: String, channelId: String ->
+            notificationConfig = notificationConfig,
+            newMessageIntent = { message: Message, channel: Channel ->
                 StartupActivity.createIntent(
                     context = context,
-                    channelId = "$channelType:$channelId"
+                    channelId = "${channel.type}:${channel.id}",
+                    messageId = message.id,
+                    parentMessageId = message.parentId,
                 )
-            }
+            },
         )
 
-        val offlinePlugin = StreamOfflinePluginFactory(Config(userPresence = true, persistenceEnabled = true), context)
+        val offlinePlugin = StreamOfflinePluginFactory(context)
+
+        val statePluginFactory = StreamStatePluginFactory(
+            config = StatePluginConfig(
+                backgroundSyncEnabled = true,
+                userPresence = true,
+            ),
+            appContext = context,
+        )
 
         val logLevel = if (BuildConfig.DEBUG) ChatLogLevel.ALL else ChatLogLevel.NOTHING
 
         ChatClient.Builder(apiKey, context)
             .notifications(notificationConfig, notificationHandler)
-            .withPlugin(offlinePlugin)
+            .withPlugins(offlinePlugin, statePluginFactory)
             .logLevel(logLevel)
+            .uploadAttachmentsNetworkType(UploadAttachmentsNetworkType.NOT_ROAMING)
+            .apply {
+                baseUrl?.let {
+                    if (it.startsWith("http://")) forceInsecureConnection()
+                    baseUrl(it)
+                }
+            }
             .build()
     }
 
     /**
      * Initializes [ChatClient] with the given user and saves it to the persistent storage.
      */
-    fun connectUser(
+    suspend fun connectUser(
         userCredentials: UserCredentials,
         onSuccess: () -> Unit = {},
-        onError: (ChatError) -> Unit = {},
+        onError: (Error) -> Unit = {},
     ) {
         ChatClient.instance().run {
-            if (getCurrentUser() == null) {
-                connectUser(userCredentials.user, userCredentials.token)
-                    .enqueue { result ->
-                        if (result.isSuccess) {
-                            ChatApp.credentialsRepository.saveUserCredentials(userCredentials)
-                            onSuccess()
-                        } else {
-                            onError(result.error())
-                        }
+            clientState.initializationState
+                .transformWhile {
+                    emit(it)
+                    it != InitializationState.COMPLETE
+                }
+                .collect {
+                    if (it == InitializationState.NOT_INITIALIZED) {
+                        connectUser(userCredentials.user, userCredentials.token)
+                            .enqueue { result ->
+                                result.onError(onError)
+                                    .onSuccess {
+                                        ChatApp.credentialsRepository.saveUserCredentials(userCredentials)
+                                        onSuccess()
+                                    }
+                            }
                     }
-            } else {
-                onSuccess()
-            }
+                }
         }
     }
 
     /**
      * Logs out the user and removes their credentials from the persistent storage.
      */
-    fun disconnectUser() {
+    suspend fun disconnectUser() {
         ChatApp.credentialsRepository.clearCredentials()
 
-        ChatClient.instance().disconnect()
+        ChatClient.instance().disconnect(false).await()
     }
 }

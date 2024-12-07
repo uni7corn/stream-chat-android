@@ -6,67 +6,69 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 
+import io.getstream.result.Error;
+import io.getstream.chat.android.models.UploadedFile;
 import io.getstream.chat.android.client.uploader.FileUploader;
 import io.getstream.chat.android.client.utils.ProgressCallback;
-import io.getstream.chat.android.client.utils.Result;
+import io.getstream.result.Result;
 import kotlin.Unit;
 
 public class MyFileUploader implements FileUploader {
     @Nullable
     @Override
-    public Result<String> sendFile(@NotNull String channelType, @NotNull String channelId, @NotNull String userId, @NotNull String connectionId, @NotNull File file, @NotNull ProgressCallback callback) {
-         try {
-            return Result.success("url");
+    public Result<UploadedFile> sendFile(@NotNull String channelType, @NotNull String channelId, @NotNull String userId, @NotNull File file, @NotNull ProgressCallback callback) {
+        try {
+            return new Result.Success<>(new UploadedFile("file url", "thumb url"));
         } catch (Exception e) {
-            return Result.error(e);
+            return new Result.Failure(new Error.ThrowableError("Could not send file.", e));
         }
     }
 
     @Nullable
     @Override
-    public Result<String> sendFile(@NotNull String channelType, @NotNull String channelId, @NotNull String userId, @NotNull String connectionId, @NotNull File file) {
+    public Result<UploadedFile> sendFile(@NotNull String channelType, @NotNull String channelId, @NotNull String userId, @NotNull File file) {
         try {
-            return Result.success("url");
+            return new Result.Success<>(new UploadedFile("file url", "thumb url"));
         } catch (Exception e) {
-            return Result.error(e);
+            return new Result.Failure(new Error.ThrowableError("Could not send file.", e));
         }
     }
 
     @Nullable
     @Override
-    public Result<String> sendImage(@NotNull String channelType, @NotNull String channelId, @NotNull String userId, @NotNull String connectionId, @NotNull File file, @NotNull ProgressCallback callback) {
+    public Result<UploadedFile> sendImage(@NotNull String channelType, @NotNull String channelId, @NotNull String userId, @NotNull File file, @NotNull ProgressCallback callback) {
         try {
-            return Result.success("url");
+            return new Result.Success<>(new UploadedFile("url", null));
         } catch (Exception e) {
-            return Result.error(e);
+            return new Result.Failure(new Error.ThrowableError("Could not send image.", e));
         }
     }
 
     @Nullable
     @Override
-    public Result<String> sendImage(@NotNull String channelType, @NotNull String channelId, @NotNull String userId, @NotNull String connectionId, @NotNull File file) {
+    public Result<UploadedFile> sendImage(@NotNull String channelType, @NotNull String channelId, @NotNull String userId, @NotNull File file) {
         try {
-            return Result.success("url");
+            return new Result.Success<>(new UploadedFile("url", null));
         } catch (Exception e) {
-            return Result.error(e);
+            return new Result.Failure(new Error.ThrowableError("Could not send image.", e));
         }
     }
 
     @Override
-    public Result<Unit> deleteFile(@NotNull String channelType, @NotNull String channelId, @NotNull String userId, @NotNull String connectionId, @NotNull String url) {
+    public Result<Unit> deleteFile(@NotNull String channelType, @NotNull String channelId, @NotNull String userId, @NotNull String url) {
         try {
-            return Result.success(Unit.INSTANCE);
+            return new Result.Success<>(Unit.INSTANCE);
         } catch (Exception e) {
-            return Result.error(e);
+            return new Result.Failure(new Error.ThrowableError("Could not delete file.", e));
         }
     }
 
     @Override
-    public Result<Unit> deleteImage(@NotNull String channelType, @NotNull String channelId, @NotNull String userId, @NotNull String connectionId, @NotNull String url) {
+    public Result<Unit> deleteImage(@NotNull String channelType, @NotNull String channelId, @NotNull String userId, @NotNull String url) {
         try {
-            return Result.success(Unit.INSTANCE);
+            return new Result.Success<>(Unit.INSTANCE);
         } catch (Exception e) {
-            return Result.error(e);
+            return new Result.Failure(new Error.ThrowableError("Could not delete image.", e));
         }
     }
 }

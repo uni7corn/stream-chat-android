@@ -21,7 +21,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
-import io.getstream.chat.android.client.utils.SyncStatus
+import io.getstream.chat.android.models.SyncStatus
 import java.util.Date
 
 @SuppressWarnings("TooManyFunctions")
@@ -34,54 +34,61 @@ internal interface ChannelDao {
     suspend fun insertMany(channelEntities: List<ChannelEntity>)
 
     @Transaction
-    @Query("SELECT cid FROM stream_chat_channel_state")
+    @Query("SELECT cid FROM $CHANNEL_ENTITY_TABLE_NAME")
     suspend fun selectAllCids(): List<String>
 
     @Query(
-        "SELECT cid FROM stream_chat_channel_state " +
+        "SELECT cid FROM $CHANNEL_ENTITY_TABLE_NAME " +
             "WHERE syncStatus = :syncStatus " +
             "ORDER BY syncStatus ASC " +
-            "LIMIT :limit"
+            "LIMIT :limit",
     )
     suspend fun selectCidsBySyncNeeded(
         syncStatus: SyncStatus = SyncStatus.SYNC_NEEDED,
-        limit: Int = NO_LIMIT
+        limit: Int = NO_LIMIT,
     ): List<String>
 
     @Query(
-        "SELECT * FROM stream_chat_channel_state " +
+        "SELECT * FROM $CHANNEL_ENTITY_TABLE_NAME " +
             "WHERE syncStatus = :syncStatus " +
             "ORDER BY syncStatus ASC " +
-            "LIMIT :limit"
+            "LIMIT :limit",
     )
     suspend fun selectSyncNeeded(
         syncStatus: SyncStatus = SyncStatus.SYNC_NEEDED,
-        limit: Int = NO_LIMIT
+        limit: Int = NO_LIMIT,
     ): List<ChannelEntity>
 
     @Query(
-        "SELECT * FROM stream_chat_channel_state " +
-            "WHERE stream_chat_channel_state.cid IN (:cids)"
+        "SELECT * FROM $CHANNEL_ENTITY_TABLE_NAME " +
+            "WHERE $CHANNEL_ENTITY_TABLE_NAME.cid IN (:cids)",
     )
     suspend fun select(cids: List<String>): List<ChannelEntity>
 
     @Query(
-        "SELECT * FROM stream_chat_channel_state " +
-            "WHERE stream_chat_channel_state.cid IN (:cid)"
+        "SELECT * FROM $CHANNEL_ENTITY_TABLE_NAME " +
+            "WHERE $CHANNEL_ENTITY_TABLE_NAME.cid IN (:cid)",
     )
     suspend fun select(cid: String?): ChannelEntity?
 
-    @Query("DELETE from stream_chat_channel_state WHERE cid = :cid")
+    @Query("DELETE from $CHANNEL_ENTITY_TABLE_NAME WHERE cid = :cid")
     suspend fun delete(cid: String)
 
-    @Query("UPDATE stream_chat_channel_state SET deletedAt = :deletedAt WHERE cid = :cid")
+    @Query("UPDATE $CHANNEL_ENTITY_TABLE_NAME SET deletedAt = :deletedAt WHERE cid = :cid")
     suspend fun setDeletedAt(cid: String, deletedAt: Date)
 
-    @Query("UPDATE stream_chat_channel_state SET hidden = :hidden, hideMessagesBefore = :hideMessagesBefore WHERE cid = :cid")
+    @Query(
+        "UPDATE $CHANNEL_ENTITY_TABLE_NAME " +
+            "SET hidden = :hidden, hideMessagesBefore = :hideMessagesBefore " +
+            "WHERE cid = :cid",
+    )
     suspend fun setHidden(cid: String, hidden: Boolean, hideMessagesBefore: Date)
 
-    @Query("UPDATE stream_chat_channel_state SET hidden = :hidden WHERE cid = :cid")
+    @Query("UPDATE $CHANNEL_ENTITY_TABLE_NAME SET hidden = :hidden WHERE cid = :cid")
     suspend fun setHidden(cid: String, hidden: Boolean)
+
+    @Query("DELETE FROM $CHANNEL_ENTITY_TABLE_NAME")
+    suspend fun deleteAll()
 
     private companion object {
         private const val NO_LIMIT: Int = -1

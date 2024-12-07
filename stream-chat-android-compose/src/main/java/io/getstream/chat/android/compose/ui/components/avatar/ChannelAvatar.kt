@@ -21,16 +21,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import io.getstream.chat.android.client.models.Channel
-import io.getstream.chat.android.client.models.User
-import io.getstream.chat.android.client.models.initials
-import io.getstream.chat.android.compose.previewdata.PreviewChannelData
-import io.getstream.chat.android.compose.previewdata.PreviewUserData
 import io.getstream.chat.android.compose.state.OnlineIndicatorAlignment
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
+import io.getstream.chat.android.models.Channel
+import io.getstream.chat.android.models.User
+import io.getstream.chat.android.previewdata.PreviewChannelData
+import io.getstream.chat.android.previewdata.PreviewUserData
+import io.getstream.chat.android.ui.common.utils.extensions.initials
 
 /**
  * Represents the [Channel] avatar that's shown when browsing channels or when you open the Messages screen.
@@ -74,13 +75,13 @@ public fun ChannelAvatar(
          */
         channel.image.isNotEmpty() -> {
             Avatar(
-                modifier = modifier,
+                modifier = modifier.testTag("Stream_ChannelAvatar"),
                 imageUrl = channel.image,
                 initials = channel.initials,
                 textStyle = textStyle,
                 shape = shape,
                 contentDescription = contentDescription,
-                onClick = onClick
+                onClick = onClick,
             )
         }
 
@@ -91,14 +92,14 @@ public fun ChannelAvatar(
             val user = members.first().user
 
             UserAvatar(
-                modifier = modifier,
+                modifier = modifier.testTag("Stream_ChannelAvatar"),
                 user = user,
                 shape = shape,
                 contentDescription = user.name,
                 showOnlineIndicator = showOnlineIndicator,
                 onlineIndicatorAlignment = onlineIndicatorAlignment,
                 onlineIndicator = onlineIndicator,
-                onClick = onClick
+                onClick = onClick,
             )
         }
         /**
@@ -109,14 +110,14 @@ public fun ChannelAvatar(
             val user = members.first { it.user.id != currentUser?.id }.user
 
             UserAvatar(
-                modifier = modifier,
+                modifier = modifier.testTag("Stream_ChannelAvatar"),
                 user = user,
                 shape = shape,
                 contentDescription = user.name,
                 showOnlineIndicator = showOnlineIndicator,
                 onlineIndicatorAlignment = onlineIndicatorAlignment,
                 onlineIndicator = onlineIndicator,
-                onClick = onClick
+                onClick = onClick,
             )
         }
         /**
@@ -127,7 +128,7 @@ public fun ChannelAvatar(
 
             GroupAvatar(
                 users = users,
-                modifier = modifier,
+                modifier = modifier.testTag("Stream_ChannelAvatar"),
                 shape = shape,
                 textStyle = groupAvatarTextStyle,
                 onClick = onClick,
@@ -204,7 +205,7 @@ private fun ChannelAvatarPreview(channel: Channel) {
         ChannelAvatar(
             channel = channel,
             currentUser = PreviewUserData.user1,
-            modifier = Modifier.size(36.dp)
+            modifier = Modifier.size(36.dp),
         )
     }
 }

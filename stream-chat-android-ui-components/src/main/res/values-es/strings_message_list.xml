@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Copyright (c) 2014-2022 Stream.io Inc. All rights reserved.
+    Copyright (c) 2014-2024 Stream.io Inc. All rights reserved.
 
     Licensed under the Stream License;
     you may not use this file except in compliance with the License.
@@ -27,11 +27,14 @@
     <item quantity="one">"%d Respuesta"</item>
     <item quantity="other">"%d Respuestas"</item>
   </plurals>
+  <string name="stream_ui_message_audio_reply_info">"Mensaje de voz"</string>
   <string name="stream_ui_message_list_attachment_display_error">"Error. El fichero no se puede mostrar"</string>
   <string name="stream_ui_message_list_attachment_invalid_mime_type">"Algo salió mal. No se pudo abrir el archivo adjunto: %1$s"</string>
   <string name="stream_ui_message_list_attachment_invalid_url">"No se pudo cargar debido a que es una URL invalida."</string>
   <string name="stream_ui_message_list_attachment_load_failed">"No se pudo cargar debido a un error inesperado."</string>
+  <string name="stream_ui_message_list_attachment_more_count">"+%1$d"</string>
   <string name="stream_ui_message_list_attachment_upload_complete">"Subida completada, procesando…"</string>
+  <string name="stream_ui_message_list_attachment_upload_progress">"%1$s/%2$s"</string>
   <string name="stream_ui_message_list_attachment_uploading">"Subiendo %1$d / %2$d …"</string>
   <string name="stream_ui_message_list_block_user">"Bloquear usuario"</string>
   <string name="stream_ui_message_list_copy_message">"Copiar Mensaje"</string>
@@ -60,6 +63,7 @@
   <string name="stream_ui_message_list_giphy_cancel">"Cancelar"</string>
   <string name="stream_ui_message_list_giphy_send">"Enviar"</string>
   <string name="stream_ui_message_list_giphy_shuffle">"Aleatorio"</string>
+  <string name="stream_ui_message_list_giphy_title">"Giphy"</string>
   <string name="stream_ui_message_list_mute_user">"Silenciar usuario"</string>
   <string name="stream_ui_message_list_pin_message">"Fijar a la conversación"</string>
   <string name="stream_ui_message_list_pinned_message">"Fijado por %1$s"</string>

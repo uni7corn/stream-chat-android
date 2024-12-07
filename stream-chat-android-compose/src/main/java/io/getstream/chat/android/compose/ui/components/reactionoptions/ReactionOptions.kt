@@ -24,7 +24,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.Icon
-import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
@@ -33,11 +33,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import io.getstream.chat.android.client.models.Reaction
 import io.getstream.chat.android.compose.R
 import io.getstream.chat.android.compose.state.reactionoptions.ReactionOptionItemState
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
 import io.getstream.chat.android.compose.ui.util.ReactionIcon
+import io.getstream.chat.android.models.Reaction
 
 /**
  * Displays all available reactions.
@@ -67,7 +67,7 @@ public fun ReactionOptions(
     itemContent: @Composable RowScope.(ReactionOptionItemState) -> Unit = { option ->
         DefaultReactionOptionItem(
             option = option,
-            onReactionOptionSelected = onReactionOptionSelected
+            onReactionOptionSelected = onReactionOptionSelected,
         )
     },
 ) {
@@ -76,13 +76,13 @@ public fun ReactionOptions(
         val painter = reactionIcon.getPainter(isSelected)
         ReactionOptionItemState(
             painter = painter,
-            type = type
+            type = type,
         )
     }
 
     Row(
         modifier = modifier,
-        horizontalArrangement = horizontalArrangement
+        horizontalArrangement = horizontalArrangement,
     ) {
         options.take(numberOfReactionsShown).forEach { option ->
             key(option.type) {
@@ -94,8 +94,8 @@ public fun ReactionOptions(
             Icon(
                 modifier = Modifier.clickable(
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = rememberRipple(bounded = false),
-                    onClick = { onShowMoreReactionsSelected() }
+                    indication = ripple(bounded = false),
+                    onClick = { onShowMoreReactionsSelected() },
                 ),
                 painter = painterResource(id = showMoreReactionsIcon),
                 contentDescription = LocalContext.current.getString(R.string.stream_compose_show_more_reactions),
@@ -122,10 +122,10 @@ internal fun DefaultReactionOptionItem(
             .size(ChatTheme.dimens.reactionOptionItemIconSize)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = rememberRipple(bounded = false),
-                onClick = { onReactionOptionSelected(option) }
+                indication = ripple(bounded = false),
+                onClick = { onReactionOptionSelected(option) },
             ),
-        option = option
+        option = option,
     )
 }
 
@@ -145,7 +145,7 @@ private fun ReactionOptionsPreview() {
             ReactionOptions(
                 ownReactions = listOf(Reaction(reactionType)),
                 onReactionOptionSelected = {},
-                onShowMoreReactionsSelected = {}
+                onShowMoreReactionsSelected = {},
             )
         }
     }
