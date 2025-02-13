@@ -21,24 +21,26 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.Icon
-import androidx.compose.material.Text
-import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import io.getstream.chat.android.common.state.MessageAction
-import io.getstream.chat.android.common.state.Reply
 import io.getstream.chat.android.compose.R
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
+import io.getstream.chat.android.ui.common.state.messages.MessageAction
+import io.getstream.chat.android.ui.common.state.messages.Reply
 
 /**
  * Shows the options "header" for the message input component. This is based on the currently active
- * message action - [io.getstream.chat.android.common.state.Reply] or [io.getstream.chat.android.common.state.Edit].
+ * message action - [io.getstream.chat.android.ui.common.state.messages.Reply] or
+ * [io.getstream.chat.android.ui.common.state.messages.Edit].
  *
  * @param modifier Modifier for styling.
  * @param activeAction Currently active [MessageAction].
@@ -52,16 +54,20 @@ public fun MessageInputOptions(
 ) {
     val optionImage =
         painterResource(
-            id = if (activeAction is Reply) R.drawable.stream_compose_ic_reply else R.drawable.stream_compose_ic_edit
+            id = if (activeAction is Reply) R.drawable.stream_compose_ic_reply else R.drawable.stream_compose_ic_edit,
         )
     val title = stringResource(
-        id = if (activeAction is Reply) R.string.stream_compose_reply_to_message
-        else R.string.stream_compose_edit_message
+        id = if (activeAction is Reply) {
+            R.string.stream_compose_reply_to_message
+        } else {
+            R.string.stream_compose_edit_message
+        },
     )
 
     Row(
-        modifier, verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Icon(
             modifier = Modifier.padding(4.dp),
@@ -81,9 +87,10 @@ public fun MessageInputOptions(
                 .padding(4.dp)
                 .clickable(
                     onClick = onCancelAction,
-                    indication = rememberRipple(bounded = false),
-                    interactionSource = remember { MutableInteractionSource() }
-                ),
+                    indication = ripple(bounded = false),
+                    interactionSource = remember { MutableInteractionSource() },
+                )
+                .testTag("Stream_ComposerCancelButton"),
             painter = painterResource(id = R.drawable.stream_compose_ic_close),
             contentDescription = stringResource(id = R.string.stream_compose_cancel),
             tint = ChatTheme.colors.textLowEmphasis,

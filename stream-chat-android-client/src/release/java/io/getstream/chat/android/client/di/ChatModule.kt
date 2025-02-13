@@ -17,33 +17,45 @@
 package io.getstream.chat.android.client.di
 
 import android.content.Context
+import androidx.lifecycle.Lifecycle
 import io.getstream.chat.android.client.api.ChatClientConfig
-import io.getstream.chat.android.client.notifications.handler.NotificationConfig
+import io.getstream.chat.android.client.debugger.ChatClientDebugger
 import io.getstream.chat.android.client.notifications.handler.NotificationHandler
+import io.getstream.chat.android.client.scope.ClientScope
+import io.getstream.chat.android.client.scope.UserScope
 import io.getstream.chat.android.client.token.TokenManager
+import io.getstream.chat.android.client.transformer.ApiModelTransformers
+import io.getstream.chat.android.client.uploader.FileTransformer
 import io.getstream.chat.android.client.uploader.FileUploader
 import okhttp3.OkHttpClient
-import java.util.concurrent.Executor
 
 /**
  * Release variant of [BaseChatModule].
  */
 internal class ChatModule(
     appContext: Context,
+    clientScope: ClientScope,
+    userScope: UserScope,
     config: ChatClientConfig,
     notificationsHandler: NotificationHandler,
-    notificationConfig: NotificationConfig,
+    apiModelTransformers: ApiModelTransformers,
+    fileTransformer: FileTransformer,
     uploader: FileUploader?,
     tokenManager: TokenManager,
-    callbackExecutor: Executor?,
     customOkHttpClient: OkHttpClient?,
+    clientDebugger: ChatClientDebugger?,
+    lifecycle: Lifecycle,
 ) : BaseChatModule(
     appContext,
+    clientScope,
+    userScope,
     config,
     notificationsHandler,
-    notificationConfig,
+    apiModelTransformers,
+    fileTransformer,
     uploader,
     tokenManager,
-    callbackExecutor,
-    customOkHttpClient
+    customOkHttpClient,
+    clientDebugger,
+    lifecycle,
 )

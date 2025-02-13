@@ -30,26 +30,29 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.Text
-import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import io.getstream.chat.android.client.models.Message
 import io.getstream.chat.android.compose.R
-import io.getstream.chat.android.compose.state.messages.list.CancelGiphy
-import io.getstream.chat.android.compose.state.messages.list.GiphyAction
-import io.getstream.chat.android.compose.state.messages.list.SendGiphy
-import io.getstream.chat.android.compose.state.messages.list.ShuffleGiphy
 import io.getstream.chat.android.compose.ui.attachments.content.MessageAttachmentsContent
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.previewdata.PreviewMessageData
+import io.getstream.chat.android.ui.common.state.messages.list.CancelGiphy
+import io.getstream.chat.android.ui.common.state.messages.list.GiphyAction
+import io.getstream.chat.android.ui.common.state.messages.list.SendGiphy
+import io.getstream.chat.android.ui.common.state.messages.list.ShuffleGiphy
 
 /**
  * Represents the content of an ephemeral giphy message.
@@ -64,18 +67,21 @@ public fun GiphyMessageContent(
     modifier: Modifier = Modifier,
     onGiphyActionClick: (GiphyAction) -> Unit = {},
 ) {
-    Column(modifier) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(40.dp)
                 .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Image(
                 modifier = Modifier.size(24.dp),
                 painter = painterResource(id = R.drawable.stream_compose_ic_giphy),
-                contentDescription = null
+                contentDescription = null,
             )
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -102,21 +108,21 @@ public fun GiphyMessageContent(
         MessageAttachmentsContent(
             message = message,
             onLongItemClick = {},
-            onImagePreviewResult = {},
+            onMediaGalleryPreviewResult = {},
         )
 
         Spacer(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(1.dp)
-                .background(color = ChatTheme.colors.borders)
+                .background(color = ChatTheme.colors.borders),
         )
 
         Row(
             modifier = Modifier
                 .height(48.dp)
                 .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             GiphyButton(
                 modifier = Modifier
@@ -124,14 +130,14 @@ public fun GiphyMessageContent(
                     .weight(1f),
                 text = stringResource(id = R.string.stream_compose_message_list_giphy_cancel),
                 textColor = ChatTheme.colors.textLowEmphasis,
-                onClick = { onGiphyActionClick(CancelGiphy(message)) }
+                onClick = { onGiphyActionClick(CancelGiphy(message)) },
             )
 
             Spacer(
                 modifier = Modifier
                     .fillMaxHeight()
                     .width(1.dp)
-                    .background(color = ChatTheme.colors.borders)
+                    .background(color = ChatTheme.colors.borders),
             )
 
             GiphyButton(
@@ -140,14 +146,14 @@ public fun GiphyMessageContent(
                     .weight(1f),
                 text = stringResource(id = R.string.stream_compose_message_list_giphy_shuffle),
                 textColor = ChatTheme.colors.textLowEmphasis,
-                onClick = { onGiphyActionClick(ShuffleGiphy(message)) }
+                onClick = { onGiphyActionClick(ShuffleGiphy(message)) },
             )
 
             Spacer(
                 modifier = Modifier
                     .fillMaxHeight()
                     .width(1.dp)
-                    .background(color = ChatTheme.colors.borders)
+                    .background(color = ChatTheme.colors.borders),
             )
 
             GiphyButton(
@@ -156,7 +162,7 @@ public fun GiphyMessageContent(
                     .weight(1f),
                 text = stringResource(id = R.string.stream_compose_message_list_giphy_send),
                 textColor = ChatTheme.colors.primaryAccent,
-                onClick = { onGiphyActionClick(SendGiphy(message)) }
+                onClick = { onGiphyActionClick(SendGiphy(message)) },
             )
         }
     }
@@ -181,18 +187,32 @@ internal fun GiphyButton(
         modifier = modifier
             .clickable(
                 onClick = onClick,
-                indication = rememberRipple(),
-                interactionSource = remember { MutableInteractionSource() }
-            )
+                indication = ripple(),
+                interactionSource = remember { MutableInteractionSource() },
+            ),
     ) {
         Text(
-            modifier = Modifier.align(Alignment.Center),
+            modifier = Modifier
+                .align(Alignment.Center)
+                .testTag("Stream_GiphyButton_$text"),
             text = text,
             style = ChatTheme.typography.bodyBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             color = textColor,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun GiphyMessageContentPreview() {
+    ChatTheme {
+        GiphyMessageContent(
+            modifier = Modifier.size(600.dp),
+            message = PreviewMessageData.message1,
+            onGiphyActionClick = {},
         )
     }
 }

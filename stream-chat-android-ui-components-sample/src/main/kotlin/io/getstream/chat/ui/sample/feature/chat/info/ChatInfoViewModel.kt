@@ -24,18 +24,18 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import io.getstream.chat.android.client.ChatClient
-import io.getstream.chat.android.client.api.models.QuerySort
-import io.getstream.chat.android.client.call.await
 import io.getstream.chat.android.client.channel.ChannelClient
-import io.getstream.chat.android.client.models.ChannelMute
-import io.getstream.chat.android.client.models.Filters
-import io.getstream.chat.android.client.models.Member
-import io.getstream.chat.android.livedata.utils.Event
-import io.getstream.chat.android.offline.extensions.globalState
-import io.getstream.chat.android.offline.extensions.watchChannelAsState
-import io.getstream.chat.android.offline.plugin.state.channel.ChannelState
-import io.getstream.chat.android.offline.plugin.state.global.GlobalState
-import io.getstream.chat.android.ui.common.extensions.isCurrentUserOwnerOrAdmin
+import io.getstream.chat.android.client.channel.state.ChannelState
+import io.getstream.chat.android.client.setup.state.ClientState
+import io.getstream.chat.android.models.ChannelCapabilities
+import io.getstream.chat.android.models.ChannelMute
+import io.getstream.chat.android.models.Filters
+import io.getstream.chat.android.models.Member
+import io.getstream.chat.android.models.User
+import io.getstream.chat.android.models.querysort.QuerySortByField
+import io.getstream.chat.android.state.extensions.watchChannelAsState
+import io.getstream.chat.android.state.utils.Event
+import io.getstream.result.Result
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
@@ -45,14 +45,14 @@ class ChatInfoViewModel(
     private val cid: String?,
     userData: UserData?,
     private val chatClient: ChatClient = ChatClient.instance(),
-    private val globalState: GlobalState = chatClient.globalState,
+    private val clientState: ClientState = chatClient.clientState,
 ) : ViewModel() {
 
     /**
      * Holds information about the current channel and is actively updated.
      */
     private val channelState: Flow<ChannelState> =
-        chatClient.watchChannelAsState(cid ?: "", DEFAULT_MESSAGE_LIMIT, viewModelScope).filterNotNull()
+        chatClient.watchChannelAsState(cid ?: "", 0, viewModelScope).filterNotNull()
 
     private lateinit var channelClient: ChannelClient
     private val _state = MediatorLiveData<State>()
@@ -68,14 +68,19 @@ class ChatInfoViewModel(
             _state.value = State()
             viewModelScope.launch {
                 // Update channel mute status
-                globalState.user.value?.channelMutes?.let(::updateChannelMuteStatus)
+                clientState.user.value?.channelMutes?.let(::updateChannelMuteStatus)
 
                 _state.addSource(channelState.flatMapLatest { it.members }.asLiveData()) { memberList ->
                     // Updates only if the user state is already set
-                    _state.value = _state.value!!.copy(canDeleteChannel = memberList.isCurrentUserOwnerOrAdmin())
                     memberList.find { member -> member.user.id == _state.value?.member?.user?.id }?.let { member ->
                         _state.value = _state.value?.copy(member = member)
                     }
+                }
+                _state.addSource(channelState.flatMapLatest { it.channelData }.asLiveData()) { channelData ->
+                    _state.value = _state.value?.copy(
+                        createdBy = channelData.createdBy,
+                        canDeleteChannel = channelData.ownCapabilities.contains(ChannelCapabilities.DELETE_CHANNEL),
+                    )
                 }
                 // Currently, we don't receive any event when channel member is banned/shadow banned, so
                 // we need to get member data from the server
@@ -83,21 +88,21 @@ class ChatInfoViewModel(
                     channelClient.queryMembers(
                         offset = 0,
                         limit = 1,
-                        filter = globalState.user.value?.id?.let { Filters.ne("id", it) } ?: Filters.neutral(),
-                        sort = QuerySort()
+                        filter = clientState.user.value?.id?.let { Filters.ne("id", it) } ?: Filters.neutral(),
+                        sort = QuerySortByField(),
                     ).await()
 
-                if (result.isSuccess) {
-                    val member = result.data().firstOrNull()
-                    // Update member, member block status, and channel notifications
-                    _state.value = _state.value!!.copy(
-                        member = member,
-                        isMemberBlocked = member?.shadowBanned ?: false,
-                        loading = false,
-                    )
-                } else {
-                    // TODO: Handle error
-                    _state.value = _state.value!!.copy(loading = false)
+                when (result) {
+                    is Result.Success -> {
+                        val member = result.value.firstOrNull()
+                        // Update member, member block status, and channel notifications
+                        _state.value = _state.value!!.copy(
+                            member = member,
+                            isMemberBlocked = member?.shadowBanned ?: false,
+                            loading = false,
+                        )
+                    }
+                    is Result.Failure -> _state.value = _state.value!!.copy(loading = false)
                 }
             }
         } else {
@@ -121,7 +126,9 @@ class ChatInfoViewModel(
     }
 
     private fun updateChannelMuteStatus(channelMutes: List<ChannelMute>) {
-        _state.value = _state.value!!.copy(channelMuted = channelMutes.any { it.channel.cid == cid })
+        _state.value?.let { state ->
+            _state.postValue(state.copy(channelMuted = channelMutes.any { it.channel?.cid == cid }))
+        }
     }
 
     private fun switchChannelMute(isEnabled: Boolean) {
@@ -131,7 +138,7 @@ class ChatInfoViewModel(
             } else {
                 channelClient.unmute().await()
             }
-            if (result.isError) {
+            if (result is Result.Failure) {
                 _errorEvents.postValue(Event(ErrorEvent.MuteChannelError))
             }
         }
@@ -147,12 +154,12 @@ class ChatInfoViewModel(
                 channelClient.shadowBanUser(
                     targetId = currentState.member.getUserId(),
                     reason = null,
-                    timeout = null
+                    timeout = null,
                 ).await()
             } else {
                 channelClient.removeShadowBan(currentState.member.getUserId()).await()
             }
-            if (result.isError) {
+            if (result is Result.Failure) {
                 _errorEvents.postValue(Event(ErrorEvent.BlockUserError))
             }
         }
@@ -164,17 +171,16 @@ class ChatInfoViewModel(
     private fun deleteChannel() {
         val cid = requireNotNull(cid)
         viewModelScope.launch {
-            val result = chatClient.channel(cid).delete().await()
-            if (result.isSuccess) {
-                _channelDeletedState.value = true
-            } else {
-                _errorEvents.postValue(Event(ErrorEvent.DeleteChannelError))
+            when (chatClient.channel(cid).delete().await()) {
+                is Result.Success -> _channelDeletedState.value = true
+                is Result.Failure -> _errorEvents.postValue(Event(ErrorEvent.DeleteChannelError))
             }
         }
     }
 
     data class State(
         val member: Member? = null,
+        val createdBy: User = User(),
         val channelMuted: Boolean = false,
         val isMemberBlocked: Boolean = false,
         val canDeleteChannel: Boolean = false,
@@ -193,14 +199,6 @@ class ChatInfoViewModel(
         object MuteChannelError : ErrorEvent()
         object BlockUserError : ErrorEvent()
         object DeleteChannelError : ErrorEvent()
-    }
-
-    private companion object {
-
-        /**
-         * The default limit for messages count in requests.
-         */
-        private const val DEFAULT_MESSAGE_LIMIT: Int = 30
     }
 }
 

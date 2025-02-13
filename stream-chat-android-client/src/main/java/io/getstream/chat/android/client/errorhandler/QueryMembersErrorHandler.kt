@@ -16,19 +16,19 @@
 
 package io.getstream.chat.android.client.errorhandler
 
-import io.getstream.chat.android.client.api.models.FilterObject
-import io.getstream.chat.android.client.api.models.QuerySort
-import io.getstream.chat.android.client.call.Call
-import io.getstream.chat.android.client.call.ReturnOnErrorCall
-import io.getstream.chat.android.client.models.Member
-import io.getstream.chat.android.client.utils.Result
 import io.getstream.chat.android.core.internal.InternalStreamChatApi
+import io.getstream.chat.android.models.FilterObject
+import io.getstream.chat.android.models.Member
+import io.getstream.chat.android.models.querysort.QuerySorter
+import io.getstream.result.Result
+import io.getstream.result.call.Call
+import io.getstream.result.call.ReturnOnErrorCall
 
 /**
  * Error handler for [io.getstream.chat.android.client.ChatClient.queryMembers] calls.
  */
 @InternalStreamChatApi
-public interface QueryMembersErrorHandler : ErrorHandler {
+public interface QueryMembersErrorHandler {
 
     /**
      * Returns a [Result] from this side effect when original request is failed.
@@ -47,7 +47,7 @@ public interface QueryMembersErrorHandler : ErrorHandler {
         offset: Int,
         limit: Int,
         filter: FilterObject,
-        sort: QuerySort<Member>,
+        sort: QuerySorter<Member>,
         members: List<Member>,
     ): ReturnOnErrorCall<List<Member>>
 }
@@ -60,7 +60,7 @@ internal fun Call<List<Member>>.onQueryMembersError(
     offset: Int,
     limit: Int,
     filter: FilterObject,
-    sort: QuerySort<Member>,
+    sort: QuerySorter<Member>,
     members: List<Member>,
 ): Call<List<Member>> {
     return errorHandlers.fold(this) { messageCall, errorHandler ->

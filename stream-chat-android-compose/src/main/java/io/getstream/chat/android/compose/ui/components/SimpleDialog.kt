@@ -16,10 +16,10 @@
 
 package io.getstream.chat.android.compose.ui.components
 
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -34,6 +34,7 @@ import io.getstream.chat.android.compose.ui.theme.ChatTheme
  * @param onPositiveAction Handler when the user confirms the dialog.
  * @param onDismiss Handler when the user dismisses the dialog.
  * @param modifier Modifier for styling.
+ * @param showDismissButton If we should show the dismiss button or not.
  */
 @Composable
 public fun SimpleDialog(
@@ -42,6 +43,7 @@ public fun SimpleDialog(
     onPositiveAction: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    showDismissButton: Boolean = true,
 ) {
     AlertDialog(
         modifier = modifier,
@@ -63,19 +65,23 @@ public fun SimpleDialog(
         confirmButton = {
             TextButton(
                 colors = ButtonDefaults.textButtonColors(contentColor = ChatTheme.colors.primaryAccent),
-                onClick = { onPositiveAction() }
+                onClick = { onPositiveAction() },
             ) {
                 Text(text = stringResource(id = R.string.stream_compose_ok))
             }
         },
-        dismissButton = {
-            TextButton(
-                colors = ButtonDefaults.textButtonColors(contentColor = ChatTheme.colors.primaryAccent),
-                onClick = onDismiss
-            ) {
-                Text(text = stringResource(id = R.string.stream_compose_cancel))
+        dismissButton = if (showDismissButton) {
+            {
+                TextButton(
+                    colors = ButtonDefaults.textButtonColors(contentColor = ChatTheme.colors.primaryAccent),
+                    onClick = onDismiss,
+                ) {
+                    Text(text = stringResource(id = R.string.stream_compose_cancel))
+                }
             }
+        } else {
+            null
         },
-        backgroundColor = ChatTheme.colors.barsBackground,
+        containerColor = ChatTheme.colors.barsBackground,
     )
 }

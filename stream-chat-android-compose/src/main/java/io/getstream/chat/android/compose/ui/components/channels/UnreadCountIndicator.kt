@@ -21,11 +21,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Text
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -44,7 +45,6 @@ public fun UnreadCountIndicator(
     modifier: Modifier = Modifier,
     color: Color = ChatTheme.colors.errorAccent,
 ) {
-
     val displayText = if (unreadCount > LimitTooManyUnreadCount) UnreadCountMany else unreadCount.toString()
     val shape = RoundedCornerShape(9.dp)
 
@@ -53,13 +53,14 @@ public fun UnreadCountIndicator(
             .defaultMinSize(minWidth = 18.dp, minHeight = 18.dp)
             .background(shape = shape, color = color)
             .padding(horizontal = 4.dp),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Text(
+            modifier = Modifier.testTag("Stream_UnreadCountIndicator"),
             text = displayText,
             color = Color.White,
             textAlign = TextAlign.Center,
-            style = ChatTheme.typography.captionBold
+            style = ChatTheme.typography.captionBold,
         )
     }
 }

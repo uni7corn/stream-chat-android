@@ -17,85 +17,82 @@
 package io.getstream.chat.android.offline.plugin.factory
 
 import android.content.Context
-import androidx.room.Room
 import io.getstream.chat.android.client.ChatClient
-import io.getstream.chat.android.client.logger.ChatLogger
-import io.getstream.chat.android.client.models.User
 import io.getstream.chat.android.client.persistance.repository.factory.RepositoryFactory
-import io.getstream.chat.android.client.persistance.repository.factory.RepositoryProvider
 import io.getstream.chat.android.client.plugin.Plugin
 import io.getstream.chat.android.client.plugin.factory.PluginFactory
-import io.getstream.chat.android.client.setup.InitializationCoordinator
-import io.getstream.chat.android.core.internal.coroutines.DispatcherProvider
-import io.getstream.chat.android.livedata.BuildConfig
-import io.getstream.chat.android.offline.errorhandler.factory.internal.OfflineErrorHandlerFactoriesProvider
-import io.getstream.chat.android.offline.event.handler.internal.EventHandler
-import io.getstream.chat.android.offline.event.handler.internal.EventHandlerImpl
-import io.getstream.chat.android.offline.event.handler.internal.EventHandlerProvider
-import io.getstream.chat.android.offline.event.handler.internal.EventHandlerSequential
-import io.getstream.chat.android.offline.interceptor.internal.DefaultInterceptor
-import io.getstream.chat.android.offline.interceptor.internal.SendMessageInterceptorImpl
-import io.getstream.chat.android.offline.plugin.configuration.Config
+import io.getstream.chat.android.client.plugin.listeners.CreateChannelListener
+import io.getstream.chat.android.client.plugin.listeners.DeleteChannelListener
+import io.getstream.chat.android.client.plugin.listeners.DeleteMessageListener
+import io.getstream.chat.android.client.plugin.listeners.DeleteReactionListener
+import io.getstream.chat.android.client.plugin.listeners.GetMessageListener
+import io.getstream.chat.android.client.plugin.listeners.HideChannelListener
+import io.getstream.chat.android.client.plugin.listeners.QueryMembersListener
+import io.getstream.chat.android.client.plugin.listeners.SendAttachmentListener
+import io.getstream.chat.android.client.plugin.listeners.SendMessageListener
+import io.getstream.chat.android.client.plugin.listeners.ShuffleGiphyListener
+import io.getstream.chat.android.core.internal.InternalStreamChatApi
+import io.getstream.chat.android.models.User
 import io.getstream.chat.android.offline.plugin.internal.OfflinePlugin
-import io.getstream.chat.android.offline.plugin.listener.internal.ChannelMarkReadListenerImpl
-import io.getstream.chat.android.offline.plugin.listener.internal.CreateChannelListenerImpl
-import io.getstream.chat.android.offline.plugin.listener.internal.DeleteMessageListenerImpl
-import io.getstream.chat.android.offline.plugin.listener.internal.DeleteReactionListenerImpl
-import io.getstream.chat.android.offline.plugin.listener.internal.EditMessageListenerImpl
-import io.getstream.chat.android.offline.plugin.listener.internal.HideChannelListenerImpl
-import io.getstream.chat.android.offline.plugin.listener.internal.MarkAllReadListenerImpl
-import io.getstream.chat.android.offline.plugin.listener.internal.QueryChannelListenerImpl
-import io.getstream.chat.android.offline.plugin.listener.internal.QueryChannelsListenerImpl
-import io.getstream.chat.android.offline.plugin.listener.internal.QueryMembersListenerImpl
-import io.getstream.chat.android.offline.plugin.listener.internal.SendGiphyListenerImpl
-import io.getstream.chat.android.offline.plugin.listener.internal.SendMessageListenerImpl
-import io.getstream.chat.android.offline.plugin.listener.internal.SendReactionListenerImpl
-import io.getstream.chat.android.offline.plugin.listener.internal.ShuffleGiphyListenerImpl
-import io.getstream.chat.android.offline.plugin.listener.internal.ThreadQueryListenerImpl
-import io.getstream.chat.android.offline.plugin.listener.internal.TypingEventListenerImpl
-import io.getstream.chat.android.offline.plugin.logic.internal.LogicRegistry
-import io.getstream.chat.android.offline.plugin.state.StateRegistry
-import io.getstream.chat.android.offline.plugin.state.global.internal.GlobalMutableState
-import io.getstream.chat.android.offline.repository.builder.internal.RepositoryFacade
-import io.getstream.chat.android.offline.repository.builder.internal.RepositoryFacadeBuilder
+import io.getstream.chat.android.offline.plugin.listener.internal.CreateChannelListenerDatabase
+import io.getstream.chat.android.offline.plugin.listener.internal.DeleteChannelListenerDatabase
+import io.getstream.chat.android.offline.plugin.listener.internal.DeleteMessageListenerDatabase
+import io.getstream.chat.android.offline.plugin.listener.internal.DeleteReactionListenerDatabase
+import io.getstream.chat.android.offline.plugin.listener.internal.EditMessageListenerDatabase
+import io.getstream.chat.android.offline.plugin.listener.internal.FetchCurrentUserListenerDatabase
+import io.getstream.chat.android.offline.plugin.listener.internal.GetMessageListenerDatabase
+import io.getstream.chat.android.offline.plugin.listener.internal.HideChannelListenerDatabase
+import io.getstream.chat.android.offline.plugin.listener.internal.QueryChannelListenerDatabase
+import io.getstream.chat.android.offline.plugin.listener.internal.QueryMembersListenerDatabase
+import io.getstream.chat.android.offline.plugin.listener.internal.QueryThreadsListenerDatabase
+import io.getstream.chat.android.offline.plugin.listener.internal.SendAttachmentsListenerDatabase
+import io.getstream.chat.android.offline.plugin.listener.internal.SendMessageListenerDatabase
+import io.getstream.chat.android.offline.plugin.listener.internal.SendReactionListenerDatabase
+import io.getstream.chat.android.offline.plugin.listener.internal.ShuffleGiphyListenerDatabase
+import io.getstream.chat.android.offline.plugin.listener.internal.ThreadQueryListenerDatabase
 import io.getstream.chat.android.offline.repository.database.internal.ChatDatabase
 import io.getstream.chat.android.offline.repository.factory.internal.DatabaseRepositoryFactory
-import io.getstream.chat.android.offline.sync.internal.SyncManager
-import io.getstream.chat.android.offline.sync.messages.internal.OfflineSyncFirebaseMessagingHandler
-import io.getstream.chat.android.offline.utils.internal.ChannelMarkReadHelper
-import kotlinx.coroutines.CoroutineScope
+import io.getstream.log.taggedLogger
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import kotlin.reflect.KClass
 
 /**
  * Implementation of [PluginFactory] that provides [OfflinePlugin].
  *
- * @param config [Config] Configuration of persistence of the SDK.
  * @param appContext [Context]
  */
-public class StreamOfflinePluginFactory(
-    private val config: Config,
+public class StreamOfflinePluginFactory @JvmOverloads constructor(
     private val appContext: Context,
-) : PluginFactory {
+    private val now: () -> Long = { System.currentTimeMillis() },
+) : PluginFactory, RepositoryFactory.Provider {
 
-    private var cachedOfflinePluginInstance: OfflinePlugin? = null
+    private val logger by taggedLogger("Chat:OfflinePluginFactory")
 
-    private val logger = ChatLogger.get("StreamOfflinePluginFactory")
+    @InternalStreamChatApi
+    override fun <T : Any> resolveDependency(klass: KClass<T>): T? {
+        return when (klass) {
+            else -> null
+        }
+    }
+
+    override fun createRepositoryFactory(user: User): RepositoryFactory {
+        logger.d { "[createRepositoryFactory] user.id: '${user.id}'" }
+        return DatabaseRepositoryFactory(
+            database = createDatabase(appContext, user),
+            currentUser = user,
+            scope = ChatClient.instance().inheritScope { SupervisorJob(it) },
+            now = now,
+        )
+    }
 
     /**
      * Creates a [Plugin]
      *
      * @return The [Plugin] instance.
      */
-    override fun get(user: User): Plugin = getOrCreateOfflinePlugin(user)
-
-    private var repositoryFactory: RepositoryFactory? = null
-
-    /**
-     * Sets a custom repository factory. Use this to change the persistence layer of the SDK.
-     */
-    public fun setRepositoryFactory(repositoryFactory: RepositoryFactory) {
-        this.repositoryFactory = repositoryFactory
+    override fun get(user: User): Plugin {
+        logger.d { "[get] user.id: ${user.id}" }
+        return createOfflinePlugin(user)
     }
 
     /**
@@ -104,200 +101,118 @@ public class StreamOfflinePluginFactory(
      *
      * This method must be called after the user is set in the SDK.
      */
-    private fun getOrCreateOfflinePlugin(user: User): OfflinePlugin {
-        val cachedPlugin = cachedOfflinePluginInstance
-
-        if (cachedPlugin != null && cachedPlugin.activeUser.id == user.id) {
-            logger.logI("OfflinePlugin for the user is already initialized. Returning cached instance.")
-            return cachedPlugin
-        } else {
-            clearCachedInstance()
-        }
-
-        val chatClient = ChatClient.instance()
-        val globalState = GlobalMutableState.getOrCreate().apply {
-            clearState()
-        }
-
-        val job = SupervisorJob()
-        val scope = CoroutineScope(job + DispatcherProvider.IO)
-
-        val repositoryFactory =
-            repositoryFactory ?: createRepositoryFactory(scope, appContext, user, config.persistenceEnabled)
-
-        RepositoryProvider.changeRepositoryFactory(repositoryFactory)
-
-        val repos = RepositoryFacadeBuilder {
-            context(appContext)
-            scope(scope)
-            defaultConfig(
-                io.getstream.chat.android.client.models.Config(
-                    connectEventsEnabled = true,
-                    muteEnabled = true
-                )
-            )
-            currentUser(user)
-            repositoryFactory(repositoryFactory)
-        }.build()
-
-        val stateRegistry = StateRegistry.create(job, scope, globalState._user, repos, repos.observeLatestUsers())
-        val logic = LogicRegistry.create(stateRegistry, globalState, config.userPresence, repos, chatClient)
-
-        val sendMessageInterceptor = SendMessageInterceptorImpl(
-            context = appContext,
-            logic = logic,
-            globalState = globalState,
-            channelRepository = repos,
-            messageRepository = repos,
-            attachmentRepository = repos,
-            scope = scope,
-            networkType = config.uploadAttachmentsNetworkType
-        )
-        val defaultInterceptor = DefaultInterceptor(
-            sendMessageInterceptor = sendMessageInterceptor
-        )
-
-        val channelMarkReadHelper = ChannelMarkReadHelper(
-            chatClient = chatClient,
-            logic = logic,
-            state = stateRegistry,
-            globalState = globalState,
-        )
-
-        chatClient.apply {
-            addInterceptor(defaultInterceptor)
-            addErrorHandlers(
-                OfflineErrorHandlerFactoriesProvider.createErrorHandlerFactories()
-                    .map { factory -> factory.create() }
-            )
-        }
-
-        val syncManager = SyncManager(
-            chatClient = chatClient,
-            globalState = globalState,
-            repos = repos,
-            logicRegistry = logic,
-            stateRegistry = stateRegistry,
-            userPresence = config.userPresence,
-        ).also { syncManager ->
-            syncManager.clearState()
-        }
-
-        val eventHandler: EventHandler = createEventHandler(
-            scope = scope,
-            client = chatClient,
-            logicRegistry = logic,
-            stateRegistry = stateRegistry,
-            mutableGlobalState = globalState,
-            repos = repos,
-            syncManager = syncManager,
-        ).also { eventHandler ->
-            EventHandlerProvider.eventHandler = eventHandler
-            eventHandler.startListening(user)
-        }
-
-        InitializationCoordinator.getOrCreate().run {
-            addUserDisconnectedListener {
-                sendMessageInterceptor.cancelJobs() // Clear all jobs that are observing attachments.
-                chatClient.removeAllInterceptors()
-                stateRegistry.clear()
-                logic.clear()
-                globalState.clearState()
-                scope.launch { syncManager.storeSyncState() }
-                eventHandler.stopListening()
-                clearCachedInstance()
-            }
-        }
-
-        if (config.backgroundSyncEnabled) {
-            chatClient.setPushNotificationReceivedListener { channelType, channelId ->
-                OfflineSyncFirebaseMessagingHandler().syncMessages(appContext, "$channelType:$channelId")
-            }
-        }
-
-        globalState._user.value = user
-
+    @Suppress("LongMethod")
+    private fun createOfflinePlugin(user: User): OfflinePlugin {
+        logger.v { "[createOfflinePlugin] user.id: ${user.id}" }
         ChatClient.OFFLINE_SUPPORT_ENABLED = true
 
+        val chatClient = ChatClient.instance()
+        val clientState = chatClient.clientState
+        val repositoryFacade = chatClient.repositoryFacade
+
+        val queryChannelListener = QueryChannelListenerDatabase(repositoryFacade)
+
+        val threadQueryListener = ThreadQueryListenerDatabase(repositoryFacade, repositoryFacade)
+
+        val editMessageListener = EditMessageListenerDatabase(
+            userRepository = repositoryFacade,
+            messageRepository = repositoryFacade,
+            clientState = clientState,
+        )
+
+        val hideChannelListener: HideChannelListener = HideChannelListenerDatabase(
+            channelRepository = repositoryFacade,
+            messageRepository = repositoryFacade,
+        )
+
+        val deleteReactionListener: DeleteReactionListener = DeleteReactionListenerDatabase(
+            clientState = clientState,
+            reactionsRepository = repositoryFacade,
+            messageRepository = repositoryFacade,
+        )
+
+        val sendReactionListener = SendReactionListenerDatabase(
+            clientState = clientState,
+            messageRepository = repositoryFacade,
+            reactionsRepository = repositoryFacade,
+            userRepository = repositoryFacade,
+        )
+
+        val deleteMessageListener: DeleteMessageListener = DeleteMessageListenerDatabase(
+            clientState = clientState,
+            messageRepository = repositoryFacade,
+            userRepository = repositoryFacade,
+        )
+
+        val sendMessageListener: SendMessageListener = SendMessageListenerDatabase(
+            repositoryFacade,
+            repositoryFacade,
+        )
+
+        val sendAttachmentListener: SendAttachmentListener = SendAttachmentsListenerDatabase(
+            repositoryFacade,
+            repositoryFacade,
+        )
+
+        val shuffleGiphyListener: ShuffleGiphyListener = ShuffleGiphyListenerDatabase(
+            userRepository = repositoryFacade,
+            messageRepository = repositoryFacade,
+        )
+
+        val queryMembersListener: QueryMembersListener = QueryMembersListenerDatabase(
+            repositoryFacade,
+            repositoryFacade,
+        )
+
+        val createChannelListener: CreateChannelListener = CreateChannelListenerDatabase(
+            clientState = clientState,
+            channelRepository = repositoryFacade,
+            userRepository = repositoryFacade,
+        )
+
+        val deleteChannelListener: DeleteChannelListener = DeleteChannelListenerDatabase(
+            clientState = clientState,
+            channelRepository = repositoryFacade,
+            userRepository = repositoryFacade,
+        )
+
+        val getMessageListener: GetMessageListener = GetMessageListenerDatabase(
+            repositoryFacade = repositoryFacade,
+        )
+
+        val fetchCurrentUserListener = FetchCurrentUserListenerDatabase(
+            userRepository = repositoryFacade,
+        )
+
+        val queryThreadsListener = QueryThreadsListenerDatabase(
+            threadsRepository = repositoryFacade,
+        )
+
         return OfflinePlugin(
-            queryChannelsListener = QueryChannelsListenerImpl(logic),
-            queryChannelListener = QueryChannelListenerImpl(logic),
-            threadQueryListener = ThreadQueryListenerImpl(logic),
-            channelMarkReadListener = ChannelMarkReadListenerImpl(channelMarkReadHelper),
-            editMessageListener = EditMessageListenerImpl(logic, globalState),
-            hideChannelListener = HideChannelListenerImpl(logic, repos),
-            markAllReadListener = MarkAllReadListenerImpl(logic, stateRegistry.scope, channelMarkReadHelper),
-            deleteReactionListener = DeleteReactionListenerImpl(logic, globalState, repos),
-            sendReactionListener = SendReactionListenerImpl(logic, globalState, repos),
-            deleteMessageListener = DeleteMessageListenerImpl(logic, globalState, repos),
-            sendMessageListener = SendMessageListenerImpl(logic, repos),
-            sendGiphyListener = SendGiphyListenerImpl(logic),
-            shuffleGiphyListener = ShuffleGiphyListenerImpl(logic),
-            queryMembersListener = QueryMembersListenerImpl(repos),
-            typingEventListener = TypingEventListenerImpl(stateRegistry),
-            createChannelListener = CreateChannelListenerImpl(globalState, repos),
-            activeUser = user
-        ).also { offlinePlugin -> cachedOfflinePluginInstance = offlinePlugin }
-    }
-
-    private fun createEventHandler(
-        scope: CoroutineScope,
-        client: ChatClient,
-        logicRegistry: LogicRegistry,
-        stateRegistry: StateRegistry,
-        mutableGlobalState: GlobalMutableState,
-        repos: RepositoryFacade,
-        syncManager: SyncManager
-    ): EventHandler {
-        return when (BuildConfig.DEBUG) {
-            true -> EventHandlerSequential(
-                scope = scope,
-                recoveryEnabled = true,
-                subscribeForEvents = { listener -> client.subscribe(listener) },
-                logicRegistry = logicRegistry,
-                stateRegistry = stateRegistry,
-                mutableGlobalState = mutableGlobalState,
-                repos = repos,
-                syncManager = syncManager,
-            )
-            else -> EventHandlerImpl(
-                scope = scope,
-                recoveryEnabled = true,
-                client = client,
-                logic = logicRegistry,
-                state = stateRegistry,
-                mutableGlobalState = mutableGlobalState,
-                repos = repos,
-                syncManager = syncManager,
-            )
-        }
-    }
-
-    private fun clearCachedInstance() {
-        cachedOfflinePluginInstance = null
-    }
-
-    private fun createRepositoryFactory(
-        scope: CoroutineScope,
-        context: Context,
-        user: User?,
-        offlineEnabled: Boolean,
-    ): RepositoryFactory {
-        return DatabaseRepositoryFactory(createDatabase(scope, context, user, offlineEnabled), user)
+            activeUser = user,
+            queryChannelListener = queryChannelListener,
+            threadQueryListener = threadQueryListener,
+            editMessageListener = editMessageListener,
+            hideChannelListener = hideChannelListener,
+            deleteReactionListener = deleteReactionListener,
+            sendReactionListener = sendReactionListener,
+            deleteMessageListener = deleteMessageListener,
+            sendMessageListener = sendMessageListener,
+            sendAttachmentListener = sendAttachmentListener,
+            shuffleGiphyListener = shuffleGiphyListener,
+            queryMembersListener = queryMembersListener,
+            createChannelListener = createChannelListener,
+            deleteChannelListener = deleteChannelListener,
+            getMessageListener = getMessageListener,
+            fetchCurrentUserListener = fetchCurrentUserListener,
+            queryThreadsListener = queryThreadsListener,
+        )
     }
 
     private fun createDatabase(
-        scope: CoroutineScope,
         context: Context,
-        user: User?,
-        offlineEnabled: Boolean,
+        user: User,
     ): ChatDatabase {
-        return if (offlineEnabled && user != null) {
-            ChatDatabase.getDatabase(context, user.id)
-        } else {
-            Room.inMemoryDatabaseBuilder(context, ChatDatabase::class.java).build().also { inMemoryDatabase ->
-                scope.launch { inMemoryDatabase.clearAllTables() }
-            }
-        }
+        return ChatDatabase.getDatabase(context, user.id)
     }
 }

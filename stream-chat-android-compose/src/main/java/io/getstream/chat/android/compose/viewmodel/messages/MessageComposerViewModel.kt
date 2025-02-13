@@ -17,17 +17,22 @@
 package io.getstream.chat.android.compose.viewmodel.messages
 
 import androidx.lifecycle.ViewModel
-import io.getstream.chat.android.client.models.Attachment
-import io.getstream.chat.android.client.models.Command
-import io.getstream.chat.android.client.models.Message
-import io.getstream.chat.android.client.models.User
-import io.getstream.chat.android.common.composer.MessageComposerController
-import io.getstream.chat.android.common.composer.MessageComposerState
-import io.getstream.chat.android.common.state.Edit
-import io.getstream.chat.android.common.state.MessageAction
-import io.getstream.chat.android.common.state.MessageMode
-import io.getstream.chat.android.common.state.Reply
-import io.getstream.chat.android.common.state.ValidationError
+import io.getstream.chat.android.models.Attachment
+import io.getstream.chat.android.models.ChannelCapabilities
+import io.getstream.chat.android.models.Command
+import io.getstream.chat.android.models.LinkPreview
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.models.PollConfig
+import io.getstream.chat.android.models.User
+import io.getstream.chat.android.ui.common.feature.messages.composer.MessageComposerController
+import io.getstream.chat.android.ui.common.state.messages.Edit
+import io.getstream.chat.android.ui.common.state.messages.MessageAction
+import io.getstream.chat.android.ui.common.state.messages.MessageMode
+import io.getstream.chat.android.ui.common.state.messages.Reply
+import io.getstream.chat.android.ui.common.state.messages.composer.MessageComposerState
+import io.getstream.chat.android.ui.common.state.messages.composer.ValidationError
+import io.getstream.chat.android.ui.common.utils.typing.TypingUpdatesBuffer
+import io.getstream.result.call.Call
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -86,6 +91,11 @@ public class MessageComposerViewModel(
     public val commandSuggestions: MutableStateFlow<List<Command>> = messageComposerController.commandSuggestions
 
     /**
+     * Represents the list of links that can be previewed.
+     */
+    public val linkPreviews: MutableStateFlow<List<LinkPreview>> = messageComposerController.linkPreviews
+
+    /**
      * Current message mode, either [MessageMode.Normal] or [MessageMode.MessageThread]. Used to determine if we're
      * sending a thread reply or a regular message.
      */
@@ -101,7 +111,7 @@ public class MessageComposerViewModel(
      * is able to exercise in the given channel.
      *
      * e.g. send messages, delete messages, etc...
-     * For a full list @see [io.getstream.chat.android.client.models.ChannelCapabilities].
+     * For a full list @see [ChannelCapabilities].
      */
     public val ownCapabilities: StateFlow<Set<String>> = messageComposerController.ownCapabilities
 
@@ -163,6 +173,15 @@ public class MessageComposerViewModel(
         messageComposerController.removeSelectedAttachment(attachment)
 
     /**
+     * Creates a poll with the given [pollConfig].
+     *
+     * @param pollConfig Configuration for creating a poll.
+     */
+    public fun createPoll(pollConfig: PollConfig) {
+        messageComposerController.createPoll(pollConfig = pollConfig)
+    }
+
+    /**
      * Sends a given message using our Stream API. Based on the internal state, we either edit an existing message,
      * or we send a new message, using our API.
      *
@@ -170,7 +189,10 @@ public class MessageComposerViewModel(
      *
      * @param message The message to send.
      */
-    public fun sendMessage(message: Message): Unit = messageComposerController.sendMessage(message)
+    public fun sendMessage(
+        message: Message,
+        callback: Call.Callback<Message> = Call.Callback { /* no-op */ },
+    ): Unit = messageComposerController.sendMessage(message, callback)
 
     /**
      * Builds a new [Message] to send to our API. Based on the internal state, we use the current action's message and
@@ -184,7 +206,7 @@ public class MessageComposerViewModel(
      * @return [Message] object, with all the data required to send it to the API.
      */
     public fun buildNewMessage(
-        message: String,
+        message: String = input.value,
         attachments: List<Attachment> = emptyList(),
     ): Message = messageComposerController.buildNewMessage(message, attachments)
 
@@ -214,13 +236,42 @@ public class MessageComposerViewModel(
     /**
      * Toggles the visibility of the command suggestion list popup.
      */
-    public fun toggleCommandsVisibility(): Unit =
-        messageComposerController.toggleCommandsVisibility()
+    public fun toggleCommandsVisibility(): Unit = messageComposerController.toggleCommandsVisibility()
+
+    /**
+     * Sets the typing updates buffer.
+     */
+    public fun setTypingUpdatesBuffer(buffer: TypingUpdatesBuffer) {
+        messageComposerController.typingUpdatesBuffer = buffer
+    }
 
     /**
      * Clears the input and the current state of the composer.
      */
     public fun clearData(): Unit = messageComposerController.clearData()
+
+    public fun startRecording(offset: Pair<Float, Float>): Unit = messageComposerController.startRecording(offset)
+
+    public fun holdRecording(offset: Pair<Float, Float>): Unit = messageComposerController.holdRecording(offset)
+
+    public fun lockRecording(): Unit = messageComposerController.lockRecording()
+
+    public fun cancelRecording(): Unit = messageComposerController.cancelRecording()
+
+    public fun stopRecording(): Unit = messageComposerController.stopRecording()
+
+    public fun toggleRecordingPlayback(): Unit = messageComposerController.toggleRecordingPlayback()
+
+    public fun completeRecording(): Unit = messageComposerController.completeRecording()
+
+    public fun pauseRecording(): Unit = messageComposerController.pauseRecording()
+
+    public fun seekRecordingTo(progress: Float): Unit = messageComposerController.seekRecordingTo(progress)
+
+    public fun sendRecording() {
+        completeRecording()
+        sendMessage(buildNewMessage(input.value, selectedAttachments.value))
+    }
 
     /**
      * Disposes the inner [MessageComposerController].

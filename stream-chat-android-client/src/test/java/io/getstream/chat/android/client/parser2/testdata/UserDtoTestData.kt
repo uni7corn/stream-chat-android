@@ -19,6 +19,9 @@ package io.getstream.chat.android.client.parser2.testdata
 import io.getstream.chat.android.client.api2.model.dto.DeviceDto
 import io.getstream.chat.android.client.api2.model.dto.DownstreamMuteDto
 import io.getstream.chat.android.client.api2.model.dto.DownstreamUserDto
+import io.getstream.chat.android.client.api2.model.dto.PrivacySettingsDto
+import io.getstream.chat.android.client.api2.model.dto.ReadReceiptsDto
+import io.getstream.chat.android.client.api2.model.dto.TypingIndicatorsDto
 import io.getstream.chat.android.client.api2.model.dto.UpstreamUserDto
 import org.intellij.lang.annotations.Language
 import java.util.Date
@@ -33,10 +36,12 @@ internal object UserDtoTestData {
             "name": "username",
             "image": "image",
             "invisible": false,
+            "language": "language",
             "banned": false,
             "devices": [],
             "online": false,
             "created_at": null,
+            "deactivated_at": null,
             "updated_at": null,
             "last_active": null,
             "total_unread_count": 0,
@@ -54,11 +59,14 @@ internal object UserDtoTestData {
             name = "username",
             image = "image",
             invisible = false,
+            privacy_settings = null,
+            language = "language",
             role = "",
             devices = emptyList(),
             online = false,
             updated_at = null,
             created_at = null,
+            deactivated_at = null,
             last_active = null,
             total_unread_count = 0,
             unread_channels = 0,
@@ -66,6 +74,7 @@ internal object UserDtoTestData {
             mutes = emptyList(),
             teams = emptyList(),
             channel_mutes = emptyList(),
+            blocked_user_ids = null,
             extraData = emptyMap(),
         )
 
@@ -81,6 +90,7 @@ internal object UserDtoTestData {
             "devices": [],
             "online": false,
             "created_at": null,
+            "deactivated_at": null,
             "updated_at": null,
             "last_active": null,
             "total_unread_count": 0,
@@ -98,10 +108,13 @@ internal object UserDtoTestData {
             name = null,
             image = null,
             invisible = false,
+            privacy_settings = null,
+            language = null,
             role = "",
             devices = emptyList(),
             online = false,
             updated_at = null,
+            deactivated_at = null,
             created_at = null,
             last_active = null,
             total_unread_count = 0,
@@ -110,6 +123,7 @@ internal object UserDtoTestData {
             mutes = emptyList(),
             teams = emptyList(),
             channel_mutes = emptyList(),
+            blocked_user_ids = null,
             extraData = emptyMap(),
         )
 
@@ -119,6 +133,15 @@ internal object UserDtoTestData {
             "id": "userId",
             "role": "owner",
             "invisible": false,
+            "privacy_settings": {
+              "typing_indicators": {
+                "enabled": false
+              },
+              "read_receipts": {
+                "enabled": false
+              }
+            },
+            "language": "language",
             "banned": false,
             "devices": [
              {
@@ -130,6 +153,7 @@ internal object UserDtoTestData {
             "online": true,
             "created_at": "2020-06-10T11:04:31.000Z",
             "updated_at": "2020-06-10T11:04:31.588Z",
+            "deactivated_at": "2020-06-10T11:04:31.588Z",
             "last_active": "2020-06-10T11:04:31.588Z",
             "total_unread_count": 1,
             "unread_channels": 2,
@@ -154,11 +178,21 @@ internal object UserDtoTestData {
             name = "username",
             image = "image",
             invisible = false,
+            privacy_settings = PrivacySettingsDto(
+                typing_indicators = TypingIndicatorsDto(
+                    enabled = false,
+                ),
+                read_receipts = ReadReceiptsDto(
+                    enabled = false,
+                ),
+            ),
+            language = "language",
             role = "owner",
             devices = listOf(DeviceDto(id = "deviceId", push_provider = "provider", provider_name = "provider_name")),
             online = true,
             updated_at = Date(1591787071588),
             created_at = Date(1591787071000),
+            deactivated_at = Date(1591787071588),
             last_active = Date(1591787071588),
             total_unread_count = 1,
             unread_channels = 2,
@@ -174,6 +208,7 @@ internal object UserDtoTestData {
             ),
             teams = listOf("team1", "team2"),
             channel_mutes = emptyList(),
+            blocked_user_ids = null,
             extraData = emptyMap(),
         )
 
@@ -185,6 +220,7 @@ internal object UserDtoTestData {
             "name": "username",
             "image": "image",
             "invisible": false,
+            "language": "language",
             "role": "owner",
             "devices": [],
             "teams": []
@@ -195,7 +231,9 @@ internal object UserDtoTestData {
         role = "owner",
         name = "username",
         image = "image",
+        language = "language",
         invisible = false,
+        privacy_settings = null,
         banned = true,
         devices = emptyList(),
         teams = emptyList(),
@@ -210,6 +248,15 @@ internal object UserDtoTestData {
             "name": "username",
             "image": "image",
             "invisible": false,
+            "privacy_settings": {
+              "typing_indicators": {
+                "enabled": false
+              },
+              "read_receipts": {
+                "enabled": false
+              }
+            },
+            "language": "language",
             "role": "owner",
             "devices": [
              {
@@ -225,11 +272,20 @@ internal object UserDtoTestData {
         id = "userId",
         role = "owner",
         invisible = false,
+        privacy_settings = PrivacySettingsDto(
+            typing_indicators = TypingIndicatorsDto(
+                enabled = false,
+            ),
+            read_receipts = ReadReceiptsDto(
+                enabled = false,
+            ),
+        ),
         banned = false,
         devices = listOf(DeviceDto(id = "deviceId", push_provider = "provider", provider_name = "provider_name")),
         teams = listOf("team1", "team2"),
         name = "username",
         image = "image",
+        language = "language",
         extraData = emptyMap(),
     )
 }

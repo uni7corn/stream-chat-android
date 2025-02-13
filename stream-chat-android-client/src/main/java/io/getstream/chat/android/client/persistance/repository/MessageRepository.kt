@@ -16,14 +16,16 @@
 
 package io.getstream.chat.android.client.persistance.repository
 
-import io.getstream.chat.android.client.models.Message
 import io.getstream.chat.android.client.query.pagination.AnyChannelPaginationRequest
-import io.getstream.chat.android.client.utils.SyncStatus
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.models.SyncStatus
 import java.util.Date
 
 /**
  * Repository to read and write [Message] data.
  */
+
+@Suppress("TooManyFunctions")
 public interface MessageRepository {
 
     /**
@@ -38,6 +40,17 @@ public interface MessageRepository {
     ): List<Message>
 
     /**
+     * Select messages for a thread in a desired page.
+     *
+     * @param messageId String.
+     * @param limit limit of messages
+     */
+    public suspend fun selectMessagesForThread(
+        messageId: String,
+        limit: Int,
+    ): List<Message>
+
+    /**
      * Selects messages by IDs.
      *
      * @param messageIds A list of [Message.id] as query specification.
@@ -46,7 +59,7 @@ public interface MessageRepository {
      *
      * @return A list of messages found in repository.
      */
-    public suspend fun selectMessages(messageIds: List<String>, forceCache: Boolean = false): List<Message>
+    public suspend fun selectMessages(messageIds: List<String>): List<Message>
 
     /**
      * Reads the message with passed ID.
@@ -56,12 +69,21 @@ public interface MessageRepository {
     public suspend fun selectMessage(messageId: String): Message?
 
     /**
+     * Selects all messages with a poll with the passed ID.
+     *
+     * @param pollId The ID of the poll.
+     *
+     * @return A list of messages with the poll.
+     */
+    public suspend fun selectMessagesWithPoll(pollId: String): List<Message>
+
+    /**
      * Inserts many messages.
      *
      * @param messages list of [Message]
      * @param cache Boolean.
      */
-    public suspend fun insertMessages(messages: List<Message>, cache: Boolean = false)
+    public suspend fun insertMessages(messages: List<Message>)
 
     /**
      * Inserts a messages.
@@ -69,7 +91,7 @@ public interface MessageRepository {
      * @param message [Message]
      * @param cache Boolean.
      */
-    public suspend fun insertMessage(message: Message, cache: Boolean = false)
+    public suspend fun insertMessage(message: Message)
 
     /**
      * Deletes all messages before a message with passed ID.
@@ -78,6 +100,13 @@ public interface MessageRepository {
      * @param hideMessagesBefore Boolean.
      */
     public suspend fun deleteChannelMessagesBefore(cid: String, hideMessagesBefore: Date)
+
+    /**
+     * Deletes all messages from a channel.
+     *
+     * @param cid of message - String.
+     */
+    public suspend fun deleteChannelMessages(cid: String)
 
     /**
      * Deletes message.
@@ -99,4 +128,21 @@ public interface MessageRepository {
      * @param syncStatus [SyncStatus]
      */
     public suspend fun selectMessageBySyncState(syncStatus: SyncStatus): List<Message>
+
+    /**
+     * Evict messages from the repository.
+     */
+    public suspend fun evictMessages()
+
+    /**
+     * Evicts a message from the repository.
+     *
+     * @param messageId String.
+     */
+    public suspend fun evictMessage(messageId: String)
+
+    /**
+     * Clear messages of this repository.
+     */
+    public suspend fun clear()
 }

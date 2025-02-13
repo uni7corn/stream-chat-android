@@ -18,23 +18,19 @@ package io.getstream.chat.android.compose.ui.components.reactionpicker
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.GridCells
+import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import io.getstream.chat.android.client.models.Message
-import io.getstream.chat.android.client.models.Reaction
-import io.getstream.chat.android.common.state.MessageAction
-import io.getstream.chat.android.common.state.React
-import io.getstream.chat.android.compose.previewdata.PreviewMessageData
 import io.getstream.chat.android.compose.ui.components.SimpleMenu
 import io.getstream.chat.android.compose.ui.components.reactionoptions.ExtendedReactionsOptions
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
 import io.getstream.chat.android.compose.ui.util.ReactionIcon
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.previewdata.PreviewMessageData
+import io.getstream.chat.android.ui.common.state.messages.MessageAction
 
 /**
  * The default maximum number of reactions shown in the picker.
@@ -56,7 +52,6 @@ private const val DefaultNumberOfReactions = 5
  * @param centerContent The content shown at the center of [ReactionsPicker].
  * By default displays all available reactions.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 public fun ReactionsPicker(
     message: Message,
@@ -67,14 +62,21 @@ public fun ReactionsPicker(
     cells: GridCells = GridCells.Fixed(DefaultNumberOfReactions),
     onDismiss: () -> Unit = {},
     reactionTypes: Map<String, ReactionIcon> = ChatTheme.reactionIconFactory.createReactionIcons(),
-    headerContent: @Composable ColumnScope.() -> Unit = {},
+    headerContent: @Composable ColumnScope.() -> Unit = {
+        with(ChatTheme.componentFactory) {
+            MessageReactionPickerHeaderContent(Modifier, message, onMessageAction, onDismiss)
+        }
+    },
     centerContent: @Composable ColumnScope.() -> Unit = {
-        DefaultReactionsPickerCenterContent(
-            message = message,
-            onMessageAction = onMessageAction,
-            cells = cells,
-            reactionTypes = reactionTypes
-        )
+        with(ChatTheme.componentFactory) {
+            MessageReactionPickerCenterContent(
+                modifier = Modifier,
+                message = message,
+                onMessageAction = onMessageAction,
+                onDismiss = onDismiss,
+                reactionTypes = reactionTypes,
+            )
+        }
     },
 ) {
     SimpleMenu(
@@ -83,39 +85,7 @@ public fun ReactionsPicker(
         overlayColor = overlayColor,
         headerContent = headerContent,
         centerContent = centerContent,
-        onDismiss = onDismiss
-    )
-}
-
-/**
- * The Default center content for the [ReactionsPicker]. Shows all available reactions.
- *
- * @param message The selected message.
- * @param onMessageAction Handler that propagates click events on each item.
- * @param cells Describes the way cells are formed inside [ExtendedReactionsOptions].
- * @param reactionTypes The available reactions.
- */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-internal fun DefaultReactionsPickerCenterContent(
-    message: Message,
-    onMessageAction: (MessageAction) -> Unit,
-    cells: GridCells = GridCells.Fixed(DefaultNumberOfReactions),
-    reactionTypes: Map<String, ReactionIcon> = ChatTheme.reactionIconFactory.createReactionIcons(),
-) {
-    ExtendedReactionsOptions(
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
-        reactionTypes = reactionTypes,
-        ownReactions = message.ownReactions,
-        onReactionOptionSelected = { reactionOptionItemState ->
-            onMessageAction(
-                React(
-                    reaction = Reaction(messageId = message.id, reactionOptionItemState.type),
-                    message = message
-                )
-            )
-        },
-        cells = cells
+        onDismiss = onDismiss,
     )
 }
 
@@ -129,7 +99,7 @@ internal fun ReactionPickerPreview() {
     ChatTheme {
         ReactionsPicker(
             message = PreviewMessageData.messageWithOwnReaction,
-            onMessageAction = {}
+            onMessageAction = {},
         )
     }
 }

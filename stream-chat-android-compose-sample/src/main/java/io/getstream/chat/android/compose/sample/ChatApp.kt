@@ -17,9 +17,11 @@
 package io.getstream.chat.android.compose.sample
 
 import android.app.Application
-import com.getstream.sdk.chat.utils.DateFormatter
+import io.getstream.chat.android.client.utils.internal.toggle.ToggleService
 import io.getstream.chat.android.compose.sample.data.PredefinedUserCredentials
 import io.getstream.chat.android.compose.sample.data.UserCredentialsRepository
+import io.getstream.chat.android.core.internal.InternalStreamChatApi
+import io.getstream.chat.android.ui.common.helper.DateFormatter
 
 class ChatApp : Application() {
 
@@ -29,6 +31,8 @@ class ChatApp : Application() {
         credentialsRepository = UserCredentialsRepository(this)
         dateFormatter = DateFormatter.from(this)
 
+        initializeToggleService()
+
         // Initialize Stream SDK
         ChatHelper.initializeSdk(this, getApiKey())
     }
@@ -37,11 +41,20 @@ class ChatApp : Application() {
         return credentialsRepository.loadApiKey() ?: PredefinedUserCredentials.API_KEY
     }
 
+    @OptIn(InternalStreamChatApi::class)
+    private fun initializeToggleService() {
+        ToggleService.init(applicationContext)
+    }
+
     companion object {
         lateinit var credentialsRepository: UserCredentialsRepository
             private set
 
         lateinit var dateFormatter: DateFormatter
             private set
+
+        public const val autoTranslationEnabled: Boolean = true
+
+        public const val isComposerLinkPreviewEnabled: Boolean = true
     }
 }

@@ -27,27 +27,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import io.getstream.chat.android.client.models.Member
-import io.getstream.chat.android.compose.previewdata.PreviewMembersData
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
+import io.getstream.chat.android.models.Member
+import io.getstream.chat.android.models.User
+import io.getstream.chat.android.previewdata.PreviewMembersData
 
 /**
  * Represents a list of members in the channel.
  *
  * @param members The list of channel members.
  * @param modifier Modifier for styling.
+ * @param currentUser The currently logged-in user.
  */
 @Composable
 public fun ChannelMembers(
     members: List<Member>,
     modifier: Modifier = Modifier,
+    currentUser: User? = null,
 ) {
     LazyRow(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 24.dp),
         horizontalArrangement = Arrangement.Center,
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp)
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp),
     ) {
         items(members) { member ->
             ChannelMembersItem(
@@ -55,6 +58,7 @@ public fun ChannelMembers(
                     .width(ChatTheme.dimens.selectedChannelMenuUserItemWidth)
                     .padding(horizontal = ChatTheme.dimens.selectedChannelMenuUserItemHorizontalPadding),
                 member = member,
+                currentUser = currentUser,
             )
         }
     }

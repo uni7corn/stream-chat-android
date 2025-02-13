@@ -3,9 +3,10 @@ package io.getstream.chat.docs.kotlin.client.cms
 import android.content.Context
 import io.getstream.chat.android.client.ChatClient
 import io.getstream.chat.android.client.api.models.QueryUsersRequest
-import io.getstream.chat.android.client.models.Filters
-import io.getstream.chat.android.client.models.User
+import io.getstream.chat.android.models.Filters
+import io.getstream.chat.android.models.User
 import io.getstream.chat.android.client.token.TokenProvider
+import io.getstream.result.Result
 import io.getstream.chat.docs.TokenService
 
 class ClientAndUsers(val context: Context, val client: ChatClient, val yourTokenService: TokenService) {
@@ -38,12 +39,15 @@ class ClientAndUsers(val context: Context, val client: ChatClient, val yourToken
             // 1. Setup the current user with a JWT token
             val token = "{{ chat_user_token }}"
             client.connectUser(user, token).enqueue { result ->
-                if (result.isSuccess) {
-                    // Logged in
-                    val user: User = result.data().user
-                    val connectionId: String = result.data().connectionId
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        // Logged in
+                        val user: User = result.value.user
+                        val connectionId: String = result.value.connectionId
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
 
@@ -59,7 +63,7 @@ class ClientAndUsers(val context: Context, val client: ChatClient, val yourToken
          * @see <a href="https://getstream.io/chat/docs/init_and_users/?language=java#websocket-connections">Websocket Connections</a>
          */
         fun disconnect() {
-            ChatClient.instance().disconnect()
+            ChatClient.instance().disconnect(flushPersistence = false).enqueue { /* ... */ }
         }
     }
 
@@ -101,11 +105,6 @@ class ClientAndUsers(val context: Context, val client: ChatClient, val yourToken
             }
             client.connectUser(user, tokenProvider).enqueue { /* ... */ }
         }
-
-        fun loggingOutAndSwitchingUsers(user: User, token: String) {
-            client.disconnect()
-            client.connectUser(user, token).enqueue { /* ... */ }
-        }
     }
 
     inner class AuthlessUsers {
@@ -141,10 +140,13 @@ class ClientAndUsers(val context: Context, val client: ChatClient, val yourToken
             )
 
             client.queryUsers(request).enqueue { result ->
-                if (result.isSuccess) {
-                    val users: List<User> = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val users = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -194,8 +196,16 @@ class ClientAndUsers(val context: Context, val client: ChatClient, val yourToken
             val user = User()
             val token = "token"
 
-            client.disconnect()
-            client.connectUser(user, token).enqueue { /* ... */ }
+            client.disconnect(flushPersistence = false).enqueue { disconnectResult ->
+                when (disconnectResult) {
+                    is Result.Success -> {
+                        client.connectUser(user, token).enqueue { /* ... */ }
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
+                }
+            }
         }
     }
 }

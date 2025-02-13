@@ -24,9 +24,9 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.Text
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,8 +64,14 @@ public fun SearchInput(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     onSearchStarted: () -> Unit = {},
-    leadingIcon: @Composable RowScope.() -> Unit = { DefaultSearchLeadingIcon() },
-    label: @Composable () -> Unit = { DefaultSearchLabel() },
+    leadingIcon: @Composable RowScope.() -> Unit = {
+        with(ChatTheme.componentFactory) {
+            SearchInputLeadingIcon()
+        }
+    },
+    label: @Composable () -> Unit = {
+        ChatTheme.componentFactory.SearchInputLabel()
+    },
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -82,10 +88,12 @@ public fun SearchInput(
                         contentDescription = stringResource(id = R.string.stream_compose_search_input_cancel),
                         tint = ChatTheme.colors.textLowEmphasis,
                     )
-                }
+                },
             )
         }
-    } else null
+    } else {
+        null
+    }
 
     InputField(
         modifier = modifier
@@ -103,7 +111,7 @@ public fun SearchInput(
         decorationBox = { innerTextField ->
             Row(
                 Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 leadingIcon()
 
@@ -119,7 +127,7 @@ public fun SearchInput(
             }
         },
         maxLines = 1,
-        innerPadding = PaddingValues(4.dp)
+        innerPadding = PaddingValues(4.dp),
     )
 }
 

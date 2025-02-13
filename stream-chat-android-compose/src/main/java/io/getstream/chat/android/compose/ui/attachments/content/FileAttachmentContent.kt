@@ -17,21 +17,21 @@
 package io.getstream.chat.android.compose.ui.attachments.content
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.Icon
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
-import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -39,44 +39,79 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import coil.compose.rememberImagePainter
-import com.getstream.sdk.chat.utils.MediaStringUtil
-import io.getstream.chat.android.client.ChatClient
-import io.getstream.chat.android.client.models.Attachment
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.skydoves.landscapist.ImageOptions
+import io.getstream.chat.android.client.utils.attachment.isImage
+import io.getstream.chat.android.client.utils.attachment.isVideo
 import io.getstream.chat.android.compose.R
 import io.getstream.chat.android.compose.state.messages.attachments.AttachmentState
+import io.getstream.chat.android.compose.ui.attachments.preview.handler.AttachmentPreviewHandler
+import io.getstream.chat.android.compose.ui.theme.ChatPreviewTheme
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
 import io.getstream.chat.android.compose.ui.util.MimeTypeIconProvider
-import io.getstream.chat.android.offline.extensions.downloadAttachment
+import io.getstream.chat.android.compose.ui.util.StreamImage
+import io.getstream.chat.android.compose.util.attachmentDownloadState
+import io.getstream.chat.android.compose.util.onDownloadHandleRequest
+import io.getstream.chat.android.models.Attachment
+import io.getstream.chat.android.models.AttachmentType
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.ui.common.images.resizing.applyStreamCdnImageResizingIfEnabled
+import io.getstream.chat.android.ui.common.utils.MediaStringUtil
+import io.getstream.chat.android.ui.common.utils.extensions.imagePreviewUrl
 
 /**
  * Builds a file attachment message which shows a list of files.
  *
  * @param attachmentState - The state of the attachment, holding the root modifier, the message
  * and the onLongItemClick handler.
+ * @param modifier Modifier for styling.
+ * @param onItemClick Lambda called when an item gets clicked.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 public fun FileAttachmentContent(
     attachmentState: AttachmentState,
     modifier: Modifier = Modifier,
+    showFileSize: (Attachment) -> Boolean = { true },
+    onItemClick: (
+        previewHandlers: List<AttachmentPreviewHandler>,
+        attachment: Attachment,
+    ) -> Unit = ::onFileAttachmentContentItemClick,
 ) {
-    val (message, onLongItemClick) = attachmentState
+    val (message, onItemLongClick) = attachmentState
+    val previewHandlers = ChatTheme.attachmentPreviewHandlers
 
     Column(
         modifier = modifier.combinedClickable(
             indication = null,
             interactionSource = remember { MutableInteractionSource() },
             onClick = {},
-            onLongClick = { onLongItemClick(message) }
-        )
+            onLongClick = { onItemLongClick(message) },
+        ).testTag("Stream_MultipleFileAttachmentsColumn"),
     ) {
         for (attachment in message.attachments) {
-            FileAttachmentItem(attachment = attachment)
+            FileAttachmentItem(
+                modifier = Modifier
+                    .padding(2.dp)
+                    .fillMaxWidth()
+                    .combinedClickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                        onClick = {
+                            onItemClick(previewHandlers, attachment)
+                        },
+                        onLongClick = { onItemLongClick(message) },
+                    ),
+                attachment = attachment,
+                showFileSize = showFileSize,
+            )
         }
     }
 }
@@ -85,74 +120,117 @@ public fun FileAttachmentContent(
  * Represents each file item in the list of file attachments.
  *
  * @param attachment The file attachment to show.
+ * @param modifier Modifier for styling.
  */
 @Composable
-public fun FileAttachmentItem(attachment: Attachment) {
-    val previewHandlers = ChatTheme.attachmentPreviewHandlers
-
+public fun FileAttachmentItem(
+    attachment: Attachment,
+    showFileSize: (Attachment) -> Boolean,
+    modifier: Modifier = Modifier,
+) {
     Surface(
-        modifier = Modifier
-            .padding(2.dp)
-            .fillMaxWidth()
-            .clickable {
-                previewHandlers
-                    .firstOrNull { it.canHandle(attachment) }
-                    ?.handleAttachmentPreview(attachment)
-            },
-        color = ChatTheme.colors.appBackground, shape = ChatTheme.shapes.attachment
+        modifier = modifier,
+        color = ChatTheme.colors.appBackground,
+        shape = ChatTheme.shapes.attachment,
     ) {
-        val context = LocalContext.current
-
         Row(
             Modifier
                 .fillMaxWidth()
                 .height(50.dp)
                 .padding(vertical = 8.dp, horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             FileAttachmentImage(attachment = attachment)
+            FileAttachmentDescription(attachment = attachment, showFileSize = showFileSize)
+            FileAttachmentDownloadIcon(attachment = attachment)
+        }
+    }
+}
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .padding(start = 16.dp, end = 8.dp),
-                horizontalAlignment = Alignment.Start,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = attachment.title ?: attachment.name ?: "",
-                    style = ChatTheme.typography.bodyBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = ChatTheme.colors.textHighEmphasis
-                )
+/**
+ *  Displays information about the attachment such as
+ *  the attachment title and its size in bytes.
+ *
+ *  @param attachment The attachment for which the information is displayed.
+ */
+@Composable
+private fun FileAttachmentDescription(
+    attachment: Attachment,
+    showFileSize: (Attachment) -> Boolean,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth(0.85f)
+            .padding(start = 16.dp, end = 8.dp),
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            modifier = Modifier.testTag("Stream_FileAttachmentName"),
+            text = attachment.title ?: attachment.name ?: "",
+            style = ChatTheme.typography.bodyBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = ChatTheme.colors.textHighEmphasis,
+        )
 
-                Text(
-                    text = MediaStringUtil.convertFileSizeByteCount(attachment.fileSize.toLong()),
-                    style = ChatTheme.typography.footnote,
-                    color = ChatTheme.colors.textLowEmphasis
-                )
-            }
-
-            Icon(
-                modifier = Modifier
-                    .align(Alignment.Top)
-                    .padding(end = 2.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = rememberRipple(bounded = false)
-                    ) {
-                        ChatClient
-                            .instance()
-                            .downloadAttachment(context, attachment)
-                            .enqueue()
-                    },
-                painter = painterResource(id = R.drawable.stream_compose_ic_file_download),
-                contentDescription = stringResource(id = R.string.stream_compose_download),
-                tint = ChatTheme.colors.textHighEmphasis
+        if (showFileSize(attachment)) {
+            Text(
+                modifier = Modifier.testTag("Stream_FileAttachmentSize"),
+                text = MediaStringUtil.convertFileSizeByteCount(attachment.fileSize.toLong()),
+                style = ChatTheme.typography.footnote,
+                color = ChatTheme.colors.textLowEmphasis,
             )
         }
     }
+}
+
+/**
+ * Downloads the given attachment when clicked.
+ *
+ * @param attachment The attachment to download.
+ */
+@OptIn(ExperimentalPermissionsApi::class)
+@Composable
+private fun RowScope.FileAttachmentDownloadIcon(attachment: Attachment) {
+    if (LocalInspectionMode.current) {
+        Icon(
+            modifier = Modifier
+                .align(Alignment.Top)
+                .padding(end = 2.dp),
+            painter = painterResource(id = R.drawable.stream_compose_ic_file_download),
+            contentDescription = stringResource(id = R.string.stream_compose_download),
+            tint = ChatTheme.colors.textHighEmphasis,
+        )
+        return
+    }
+
+    val (writePermissionState, downloadPayload) = attachmentDownloadState()
+    val context = LocalContext.current
+    val downloadAttachmentUriGenerator = ChatTheme.streamDownloadAttachmentUriGenerator
+    val downloadRequestInterceptor = ChatTheme.streamDownloadRequestInterceptor
+    Icon(
+        modifier = Modifier
+            .align(Alignment.Top)
+            .padding(end = 2.dp)
+            .testTag("Stream_FileAttachmentDownloadButton")
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(bounded = false),
+            ) {
+                onDownloadHandleRequest(
+                    context = context,
+                    payload = attachment,
+                    permissionState = writePermissionState,
+                    downloadPayload = downloadPayload,
+                    generateDownloadUri = downloadAttachmentUriGenerator::generateDownloadUri,
+                    interceptRequest = downloadRequestInterceptor::intercept,
+                )
+            },
+        painter = painterResource(id = R.drawable.stream_compose_ic_file_download),
+        contentDescription = stringResource(id = R.string.stream_compose_download),
+        tint = ChatTheme.colors.textHighEmphasis,
+    )
 }
 
 /**
@@ -163,26 +241,73 @@ public fun FileAttachmentItem(attachment: Attachment) {
  */
 @Composable
 public fun FileAttachmentImage(attachment: Attachment) {
-    val isImage = attachment.type == "image"
+    val isImage = attachment.isImage()
+    val isVideoWithThumbnails = attachment.isVideo() && ChatTheme.videoThumbnailsEnabled
 
-    val painter = if (isImage) {
-        val dataToLoad = attachment.imageUrl ?: attachment.upload
+    val data = when {
+        isImage -> {
+            val dataToLoad =
+                attachment.imagePreviewUrl?.applyStreamCdnImageResizingIfEnabled(ChatTheme.streamCdnImageResizing)
+                    ?: attachment.upload
 
-        rememberImagePainter(dataToLoad)
-    } else {
-        painterResource(id = MimeTypeIconProvider.getIconRes(attachment.mimeType))
+            dataToLoad
+        }
+
+        isVideoWithThumbnails -> {
+            val dataToLoad = attachment.thumbUrl?.applyStreamCdnImageResizingIfEnabled(ChatTheme.streamCdnImageResizing)
+                ?: attachment.upload
+
+            dataToLoad
+        }
+
+        else -> MimeTypeIconProvider.getIconRes(attachment.mimeType)
     }
 
-    val shape = if (isImage) ChatTheme.shapes.imageThumbnail else null
+    val shape = if (isImage || isVideoWithThumbnails) ChatTheme.shapes.imageThumbnail else null
 
-    val imageModifier = Modifier.size(height = 40.dp, width = 35.dp).let { baseModifier ->
-        if (shape != null) baseModifier.clip(shape) else baseModifier
-    }
+    val imageModifier = Modifier
+        .size(height = 40.dp, width = 35.dp)
+        .let { baseModifier ->
+            if (shape != null) baseModifier.clip(shape) else baseModifier
+        }
+        .testTag("Stream_FileAttachmentImage")
 
-    Image(
+    StreamImage(
         modifier = imageModifier,
-        painter = painter,
-        contentDescription = null,
-        contentScale = if (isImage) ContentScale.Crop else ContentScale.Fit
+        data = { data },
+        imageOptions = ImageOptions(
+            contentScale = if (isImage || isVideoWithThumbnails) {
+                ContentScale.Crop
+            } else {
+                ContentScale.Fit
+            },
+        ),
     )
+}
+
+/**
+ * Handles clicks on individual file attachment content items.
+ *
+ * @param previewHandlers A list of preview handlers from which a suitable handler
+ * will be looked for.
+ * @param attachment The attachment being clicked.
+ */
+internal fun onFileAttachmentContentItemClick(
+    previewHandlers: List<AttachmentPreviewHandler>,
+    attachment: Attachment,
+) {
+    previewHandlers.firstOrNull { it.canHandle(attachment) }?.handleAttachmentPreview(attachment)
+}
+
+@Preview(showSystemUi = true, showBackground = true)
+@Composable
+internal fun FileAttachmentContentPreview() {
+    val attachment = Attachment(type = AttachmentType.FILE)
+    val attachmentState = AttachmentState(Message(attachments = mutableListOf(attachment)))
+
+    ChatPreviewTheme {
+        FileAttachmentContent(
+            attachmentState = attachmentState,
+        )
+    }
 }

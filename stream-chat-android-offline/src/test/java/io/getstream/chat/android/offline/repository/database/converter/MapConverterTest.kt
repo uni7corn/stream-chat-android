@@ -16,10 +16,10 @@
 
 package io.getstream.chat.android.offline.repository.database.converter
 
+import io.getstream.chat.android.client.test.utils.TestDataHelper
 import io.getstream.chat.android.offline.repository.database.converter.internal.MapConverter
 import io.getstream.chat.android.offline.repository.domain.channel.member.internal.MemberEntity
 import io.getstream.chat.android.offline.repository.domain.channel.userread.internal.ChannelUserReadEntity
-import io.getstream.chat.android.offline.utils.TestDataHelper
 import org.amshove.kluent.shouldBeEqualTo
 import org.junit.Test
 import java.util.Date
@@ -39,7 +39,7 @@ internal class MapConverterTest {
     @Test
     fun testEncoding() {
         val converter = MapConverter()
-        val readMap = mutableMapOf(data.user1.id to ChannelUserReadEntity(data.user1.id, Date(), 0, Date()))
+        val readMap = mutableMapOf(data.user1.id to ChannelUserReadEntity(data.user1.id, Date(), 0, Date(), null))
         val output = converter.readMapToString(readMap)
         val converted = converter.stringToReadMap(output)
         converted shouldBeEqualTo readMap

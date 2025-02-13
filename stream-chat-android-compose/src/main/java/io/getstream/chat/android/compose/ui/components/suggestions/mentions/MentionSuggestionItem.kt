@@ -25,20 +25,24 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.material.Icon
-import androidx.compose.material.Text
-import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.getstream.chat.android.client.models.User
+import io.getstream.chat.android.client.ChatClient
 import io.getstream.chat.android.compose.R
-import io.getstream.chat.android.compose.ui.components.avatar.UserAvatar
+import io.getstream.chat.android.compose.state.OnlineIndicatorAlignment
+import io.getstream.chat.android.compose.ui.components.avatar.DefaultOnlineIndicator
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
+import io.getstream.chat.android.models.User
+import io.getstream.chat.android.ui.common.utils.extensions.shouldShowOnlineIndicator
 
 /**
  * Represents the mention suggestion item in the mention suggestion list popup.
@@ -56,13 +60,19 @@ public fun MentionSuggestionItem(
     onMentionSelected: (User) -> Unit,
     modifier: Modifier = Modifier,
     leadingContent: @Composable RowScope.(User) -> Unit = {
-        DefaultMentionSuggestionItemLeadingContent(user = it)
+        with(ChatTheme.componentFactory) {
+            MessageComposerMentionSuggestionItemLeadingContent(user = it)
+        }
     },
     centerContent: @Composable RowScope.(User) -> Unit = {
-        DefaultMentionSuggestionItemCenterContent(user = it)
+        with(ChatTheme.componentFactory) {
+            MessageComposerMentionSuggestionItemCenterContent(user = it)
+        }
     },
     trailingContent: @Composable RowScope.(User) -> Unit = {
-        DefaultMentionSuggestionItemTrailingContent()
+        with(ChatTheme.componentFactory) {
+            MessageComposerMentionSuggestionItemTrailingContent(user = it)
+        }
     },
 ) {
     Row(
@@ -71,16 +81,16 @@ public fun MentionSuggestionItem(
             .wrapContentHeight()
             .clickable(
                 onClick = { onMentionSelected(user) },
-                indication = rememberRipple(),
-                interactionSource = remember { MutableInteractionSource() }
+                indication = ripple(),
+                interactionSource = remember { MutableInteractionSource() },
             )
             .padding(
                 vertical = ChatTheme.dimens.mentionSuggestionItemVerticalPadding,
-                horizontal = ChatTheme.dimens.mentionSuggestionItemHorizontalPadding
-            ),
+                horizontal = ChatTheme.dimens.mentionSuggestionItemHorizontalPadding,
+            )
+            .testTag("Stream_MentionSuggestionItem"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-
         leadingContent(user)
 
         centerContent(user)
@@ -96,12 +106,18 @@ public fun MentionSuggestionItem(
  */
 @Composable
 internal fun DefaultMentionSuggestionItemLeadingContent(user: User) {
-    UserAvatar(
+    ChatTheme.componentFactory.UserAvatar(
         modifier = Modifier
             .padding(end = 8.dp)
             .size(ChatTheme.dimens.mentionSuggestionItemAvatarSize),
         user = user,
-        showOnlineIndicator = true,
+        textStyle = ChatTheme.typography.title3Bold,
+        showOnlineIndicator = user.shouldShowOnlineIndicator(
+            userPresence = ChatTheme.userPresence,
+            currentUser = ChatClient.instance().getCurrentUser(),
+        ),
+        onlineIndicator = { DefaultOnlineIndicator(onlineIndicatorAlignment = OnlineIndicatorAlignment.TopEnd) },
+        onClick = null,
     )
 }
 
@@ -116,21 +132,25 @@ internal fun RowScope.DefaultMentionSuggestionItemCenterContent(user: User) {
         modifier = Modifier
             .weight(1f)
             .wrapContentHeight()
+            .align(Alignment.CenterVertically),
     ) {
+        val username = "@${user.id}"
         Text(
-            text = user.name,
+            text = user.name.ifEmpty { username },
             style = ChatTheme.typography.bodyBold,
             color = ChatTheme.colors.textHighEmphasis,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
         )
-        Text(
-            text = "@${user.id}",
-            style = ChatTheme.typography.footnote,
-            color = ChatTheme.colors.textLowEmphasis,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        if (user.name.isNotEmpty()) {
+            Text(
+                text = username,
+                style = ChatTheme.typography.body,
+                color = ChatTheme.colors.textLowEmphasis,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
@@ -145,6 +165,6 @@ internal fun DefaultMentionSuggestionItemTrailingContent() {
             .size(24.dp),
         painter = painterResource(id = R.drawable.stream_compose_ic_mention),
         contentDescription = null,
-        tint = ChatTheme.colors.primaryAccent
+        tint = ChatTheme.colors.primaryAccent,
     )
 }

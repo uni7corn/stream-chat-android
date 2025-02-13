@@ -17,7 +17,9 @@
 package io.getstream.chat.android.client.utils
 
 import io.getstream.chat.android.client.call.RetrofitCall
-import io.getstream.chat.android.client.parser2.MoshiChatParser
+import io.getstream.chat.android.client.parser2.ParserFactory
+import io.getstream.chat.android.core.internal.coroutines.DispatcherProvider
+import kotlinx.coroutines.CoroutineScope
 import okhttp3.Request
 import okio.Timeout
 import retrofit2.Call
@@ -29,8 +31,8 @@ internal class RetroSuccess<T : Any>(val result: T) : Call<T> {
     fun toRetrofitCall(): RetrofitCall<T> {
         return RetrofitCall(
             call = this,
-            parser = MoshiChatParser(),
-            callbackExecutor = { runnable -> runnable.run() },
+            parser = ParserFactory.createMoshiChatParser(),
+            CoroutineScope(DispatcherProvider.IO),
         )
     }
 

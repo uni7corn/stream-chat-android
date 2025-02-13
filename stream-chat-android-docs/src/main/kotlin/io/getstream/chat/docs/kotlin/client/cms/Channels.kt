@@ -2,28 +2,30 @@ package io.getstream.chat.docs.kotlin.client.cms
 
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import io.getstream.chat.android.client.ChatClient
-import io.getstream.chat.android.client.api.models.FilterObject
-import io.getstream.chat.android.client.api.models.NeutralFilterObject
+import io.getstream.chat.android.models.FilterObject
+import io.getstream.chat.android.models.NeutralFilterObject
 import io.getstream.chat.android.client.api.models.Pagination.LESS_THAN
 import io.getstream.chat.android.client.api.models.QueryChannelRequest
 import io.getstream.chat.android.client.api.models.QueryChannelsRequest
-import io.getstream.chat.android.client.api.models.QuerySort
+import io.getstream.chat.android.models.querysort.QuerySortByField
+import io.getstream.chat.android.models.querysort.QuerySortByField.Companion.ascByName
+import io.getstream.chat.android.models.querysort.QuerySortByField.Companion.descByName
 import io.getstream.chat.android.client.channel.ChannelClient
 import io.getstream.chat.android.client.channel.subscribeFor
 import io.getstream.chat.android.client.events.NotificationChannelMutesUpdatedEvent
 import io.getstream.chat.android.client.events.UserStartWatchingEvent
 import io.getstream.chat.android.client.events.UserStopWatchingEvent
 import io.getstream.chat.android.client.extensions.isMutedFor
-import io.getstream.chat.android.client.models.Channel
-import io.getstream.chat.android.client.models.ChannelMute
-import io.getstream.chat.android.client.models.Filters
-import io.getstream.chat.android.client.models.Member
-import io.getstream.chat.android.client.models.Message
-import io.getstream.chat.android.client.models.User
+import io.getstream.chat.android.models.Channel
+import io.getstream.chat.android.models.ChannelCapabilities
+import io.getstream.chat.android.models.ChannelMute
+import io.getstream.chat.android.models.Filters
+import io.getstream.chat.android.models.Member
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.models.User
 import io.getstream.chat.android.client.subscribeFor
-import io.getstream.chat.docs.StaticInstances.TAG
+import io.getstream.result.Result
 
 class Channels(val client: ChatClient, val channelClient: ChannelClient) {
 
@@ -39,10 +41,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
             val channelClient = client.channel(channelType = "messaging", channelId = "general")
 
             channelClient.create(memberIds = emptyList(), extraData = emptyMap()).enqueue { result ->
-                if (result.isSuccess) {
-                    val newChannel: Channel = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val newChannel: Channel = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -57,10 +62,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                 memberIds = listOf("thierry", "tomasso"),
                 extraData = emptyMap()
             ).enqueue { result ->
-                if (result.isSuccess) {
-                    val channel = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val channel: Channel = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -74,10 +82,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
             val channelClient = client.channel(channelType = "messaging", channelId = "general")
 
             channelClient.watch().enqueue { result ->
-                if (result.isSuccess) {
-                    val channel: Channel = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val channel: Channel = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -90,7 +101,7 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                 ),
                 offset = 0,
                 limit = 10,
-                querySort = QuerySort.desc("last_message_at")
+                querySort = QuerySortByField.descByName("lastMessageAt")
             ).apply {
                 // Watches the channels automatically
                 watch = true
@@ -99,10 +110,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
 
             // Run query on ChatClient
             client.queryChannels(request).enqueue { result ->
-                if (result.isSuccess) {
-                    val channels: List<Channel> = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val channels: List<Channel> = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -112,10 +126,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
          */
         fun unwatchAChannel() {
             channelClient.stopWatching().enqueue { result ->
-                if (result.isSuccess) {
-                    // Channel unwatched
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        // Channel unwatched
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -123,11 +140,14 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
         fun watcherCount() {
             val request = QueryChannelRequest().withState()
             channelClient.query(request).enqueue { result ->
-                if (result.isSuccess) {
-                    val channel: Channel = result.data()
-                    channel.watcherCount
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val channel: Channel = result.value
+                        channel.watcherCount
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -136,11 +156,14 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
             val request = QueryChannelRequest()
                 .withWatchers(limit = 5, offset = 0)
             channelClient.query(request).enqueue { result ->
-                if (result.isSuccess) {
-                    val channel: Channel = result.data()
-                    val watchers: List<User> = channel.watchers
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val channel: Channel = result.value
+                        val watchers: List<User> = channel.watchers
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -165,6 +188,7 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                         // User who stopped watching the channel
                         val user = event.user
                     }
+                    else -> Unit
                 }
             }
         }
@@ -222,10 +246,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                     "color" to "green",
                 ),
             ).enqueue { result ->
-                if (result.isSuccess) {
-                    val channel = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val channel = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -244,19 +271,25 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
 
             // Add members with ids "thierry" and "josh"
             channelClient.addMembers(listOf("thierry", "josh")).enqueue { result ->
-                if (result.isSuccess) {
-                    val channel: Channel = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val channel = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
 
             // Remove member with id "tommaso"
             channelClient.removeMembers(listOf("tommaso")).enqueue { result ->
-                if (result.isSuccess) {
-                    val channel: Channel = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val channel = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -272,10 +305,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                 listOf("thierry", "josh"),
                 Message(text = "Thierry and Josh joined this channel.")
             ).enqueue { result ->
-                if (result.isSuccess) {
-                    val channel: Channel = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val channel = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
 
@@ -284,10 +320,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                 listOf("tommaso"),
                 Message(text = "Tommaso was removed from this channel.")
             ).enqueue { result ->
-                if (result.isSuccess) {
-                    val channel: Channel = result.data()
-                } else {
-                    // Handle result.error()
+                when (result) {
+                    is Result.Success -> {
+                        val channel = result.value
+                    }
+                    is Result.Failure -> {
+                        // Handler error
+                    }
                 }
             }
         }
@@ -304,17 +343,20 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                     ),
                     offset = 0,
                     limit = 10,
-                    querySort = QuerySort.desc("last_message_at")
+                    querySort = QuerySortByField.descByName("lastMessageAt")
                 ).apply {
                     watch = true
                     state = true
                 }
 
                 client.queryChannels(request).enqueue { result ->
-                    if (result.isSuccess) {
-                        val channels: List<Channel> = result.data()
-                    } else {
-                        // Handle result.error()
+                    when (result) {
+                        is Result.Success -> {
+                            val channels = result.value
+                        }
+                        is Result.Failure -> {
+                            // Handler error
+                        }
                     }
                 }
             }
@@ -345,10 +387,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                 val limit = 10
                 val request = QueryChannelsRequest(filter, offset, limit)
                 client.queryChannels(request).enqueue { result ->
-                    if (result.isSuccess) {
-                        val channels = result.data()
-                    } else {
-                        // Handle result.error()
+                    when (result) {
+                        is Result.Success -> {
+                            val channels = result.value
+                        }
+                        is Result.Failure -> {
+                            // Handler error
+                        }
                     }
                 }
 
@@ -359,10 +404,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                     limit = limit
                 )
                 client.queryChannels(nextRequest).enqueue { result ->
-                    if (result.isSuccess) {
-                        val channels = result.data()
-                    } else {
-                        // Handle result.error()
+                    when (result) {
+                        is Result.Success -> {
+                            val channels = result.value
+                        }
+                        is Result.Failure -> {
+                            // Handler error
+                        }
                     }
                 }
             }
@@ -372,22 +420,61 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
          * @see <a href="https://getstream.io/chat/docs/query_members/?language=kotlin">Querying Members</a>
          */
         inner class QueryingMembers {
+
+            fun paginationAndOrdering() {
+                val channelClient = client.channel("messaging", "general")
+                val filter = Filters.neutral()
+                val offset = 0
+                val limit = 10
+
+                // paginate by user_id in descending order
+                val sort = QuerySortByField<Member>().descByName("userId")
+
+                channelClient.queryMembers(offset, limit, filter, sort).enqueue { result ->
+                    when (result) {
+                        is Result.Success -> {
+                            val members = result.value
+                        }
+                        is Result.Failure -> {
+                            // Handler error
+                        }
+                    }
+                }
+
+                // paginate by created at in ascending order
+                val createdAtSort = QuerySortByField<Member>().ascByName("createdAt")
+
+                channelClient.queryMembers(offset, limit, filter, createdAtSort).enqueue { result ->
+                    when (result) {
+                        is Result.Success -> {
+                            val members = result.value
+                        }
+                        is Result.Failure -> {
+                            // Handler error
+                        }
+                    }
+                }
+            }
+
             fun queryingMembers() {
                 val channelClient = client.channel("messaging", "general")
 
                 val offset = 0 // Use this value for pagination
                 val limit = 10
-                val sort = QuerySort<Member>()
+                val sort = QuerySortByField<Member>()
 
                 // Channel members can be queried with various filters
                 // 1. Create the filter, e.g query members by user name
                 val filterByName = Filters.eq("name", "tommaso")
                 // 2. Call queryMembers with that filter
                 channelClient.queryMembers(offset, limit, filterByName, sort).enqueue { result ->
-                    if (result.isSuccess) {
-                        val members: List<Member> = result.data()
-                    } else {
-                        Log.e(TAG, String.format("There was an error %s", result.error()), result.error().cause)
+                    when (result) {
+                        is Result.Success -> {
+                            val members = result.value
+                        }
+                        is Result.Failure -> {
+                            // Handler error
+                        }
                     }
                 }
 
@@ -414,9 +501,9 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                 // Query all the members
                 val filterByNone = NeutralFilterObject
 
-                // Results can also be orderd with the QuerySort param
+                // Results can also be ordered with the QuerySortByField param
                 // For example, this will order results by member creation time, descending
-                val createdAtDescendingSort = QuerySort<Member>().desc("created_at")
+                val createdAtDescendingSort = QuerySortByField<Member>().desc("created_at")
             }
         }
 
@@ -434,18 +521,46 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                     .withMessages(pageSize)
 
                 channelClient.query(request).enqueue { result ->
-                    if (result.isSuccess) {
-                        val messages: List<Message> = result.data().messages
-                        if (messages.size < pageSize) {
-                            // All messages loaded
-                        } else {
-                            // Load next page
-                            val nextRequest = QueryChannelRequest()
-                                .withMessages(LESS_THAN, messages.last().id, pageSize)
-                            // ...
+                    when (result) {
+                        is Result.Success -> {
+                            val messages: List<Message> = result.value.messages
+                            if (messages.size < pageSize) {
+                                // All messages loaded
+                            } else {
+                                // Load next page
+                                val nextRequest = QueryChannelRequest()
+                                    .withMessages(LESS_THAN, messages.last().id, pageSize)
+                                // ...
+                            }
                         }
-                    } else {
-                        // Handle result.error()
+                        is Result.Failure -> {
+                            // Handler error
+                        }
+                    }
+                }
+            }
+        }
+
+        /**
+         * @see <a href="https://getstream.io/chat/docs/android/channel_capabilities/?language=kotlin">Capabilities</a>
+         */
+        inner class Capabilities {
+
+            fun frontendCapabilities() {
+                val channelClient = client.channel("messaging", "general")
+
+                channelClient.query(QueryChannelRequest()).enqueue { result ->
+                    when (result) {
+                        is Result.Success -> {
+                            val channel = result.value
+
+                            val capabilities = channel.ownCapabilities
+                            val userCanDeleteOwnMessage = capabilities.contains(ChannelCapabilities.DELETE_OWN_MESSAGE)
+                            val userCanUpdateAnyMessage = capabilities.contains(ChannelCapabilities.UPDATE_ANY_MESSAGE)
+                        }
+                        is Result.Failure -> {
+                            // Handler error
+                        }
                     }
                 }
             }
@@ -464,10 +579,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                 val data = mapOf("invites" to listOf("nick"))
 
                 channelClient.create(memberIds = listOf("thierry", "tommaso"), extraData = data).enqueue { result ->
-                    if (result.isSuccess) {
-                        val channel = result.data()
-                    } else {
-                        // Handle result.error()
+                    when (result) {
+                        is Result.Success -> {
+                            val channel = result.value
+                        }
+                        is Result.Failure -> {
+                            // Handler error
+                        }
                     }
                 }
             }
@@ -479,10 +597,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                 channelClient.acceptInvite(
                     message = "Nick joined this channel!"
                 ).enqueue { result ->
-                    if (result.isSuccess) {
-                        val channel = result.data()
-                    } else {
-                        // Handle result.error()
+                    when (result) {
+                        is Result.Success -> {
+                            val channel = result.value
+                        }
+                        is Result.Failure -> {
+                            // Handler error
+                        }
                     }
                 }
             }
@@ -492,10 +613,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
              */
             fun rejectingAnInvite() {
                 channelClient.rejectInvite().enqueue { result ->
-                    if (result.isSuccess) {
-                        // Invite rejected
-                    } else {
-                        // Handle result.error()
+                    when (result) {
+                        is Result.Success -> {
+                            // Invite rejected
+                        }
+                        is Result.Failure -> {
+                            // Handler error
+                        }
                     }
                 }
             }
@@ -510,10 +634,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                     limit = 10
                 )
                 client.queryChannels(request).enqueue { result ->
-                    if (result.isSuccess) {
-                        val channels: List<Channel> = result.data()
-                    } else {
-                        // Handle result.error()
+                    when (result) {
+                        is Result.Success -> {
+                            val channels = result.value
+                        }
+                        is Result.Failure -> {
+                            // Handler error
+                        }
                     }
                 }
             }
@@ -528,10 +655,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                     limit = 10
                 )
                 client.queryChannels(request).enqueue { result ->
-                    if (result.isSuccess) {
-                        val channels: List<Channel> = result.data()
-                    } else {
-                        // Handle result.error()
+                    when (result) {
+                        is Result.Success -> {
+                            val channels = result.value
+                        }
+                        is Result.Failure -> {
+                            // Handler error
+                        }
                     }
                 }
             }
@@ -546,10 +676,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                     limit = 10
                 )
                 client.queryChannels(request).enqueue { result ->
-                    if (result.isSuccess) {
-                        val channels: List<Channel> = result.data()
-                    } else {
-                        // Handle result.error()
+                    when (result) {
+                        is Result.Success -> {
+                            val channels = result.value
+                        }
+                        is Result.Failure -> {
+                            // Handler error
+                        }
                     }
                 }
             }
@@ -568,29 +701,40 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                     // Mute a channel
                     val channelClient = client.channel("messaging", "general")
                     channelClient.mute().enqueue { result ->
-                        if (result.isSuccess) {
-                            // Channel is muted
-                        } else {
-                            // Handle result.error()
+                        when (result) {
+                            is Result.Success -> {
+                                // Channel is muted
+                            }
+                            is Result.Failure -> {
+                                // Handler error
+                            }
                         }
                     }
 
                     // Mute a channel for 60 minutes
                     channelClient.mute(expiration = 60 * 60 * 1000).enqueue { result ->
-                        if (result.isSuccess) {
-                            // Channel is muted
-                        } else {
-                            // Handle result.error()
+                        when (result) {
+                            is Result.Success -> {
+                                // Channel is muted
+                            }
+                            is Result.Failure -> {
+                                // Handler error
+                            }
                         }
                     }
 
                     // Get list of muted channels when user is connected
                     client.connectUser(User("user-id"), "token")
                         .enqueue { result ->
-                            if (result.isSuccess) {
-                                val user = result.data().user
-                                // Result contains the list of channel mutes
-                                val mutes: List<ChannelMute> = user.channelMutes
+                            when (result) {
+                                is Result.Success -> {
+                                    val user = result.value.user
+                                    // Result contains the list of channel mutes
+                                    val mutes: List<ChannelMute> = user.channelMutes
+                                }
+                                is Result.Failure -> {
+                                    // Handler error
+                                }
                             }
                         }
 
@@ -633,10 +777,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                             limit = 10,
                         )
                     ).enqueue { result ->
-                        if (result.isSuccess) {
-                            val channels: List<Channel> = result.data()
-                        } else {
-                            // Handle result.error()
+                        when (result) {
+                            is Result.Success -> {
+                                val channels = result.value
+                            }
+                            is Result.Failure -> {
+                                // Handler error
+                            }
                         }
                     }
                 }
@@ -647,10 +794,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                 fun removeAChannelMute() {
                     // Unmute channel for current user
                     channelClient.unmute().enqueue { result ->
-                        if (result.isSuccess) {
-                            // Channel is unmuted
-                        } else {
-                            // Handle result.error()
+                        when (result) {
+                            is Result.Success -> {
+                                // Channel is unmuted
+                            }
+                            is Result.Failure -> {
+                                // Handler error
+                            }
                         }
                     }
                 }
@@ -664,28 +814,73 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                 fun hidingAChannel() {
                     // Hides the channel until a new message is added there
                     channelClient.hide().enqueue { result ->
-                        if (result.isSuccess) {
-                            // Channel is hidden
-                        } else {
-                            // Handle result.error()
+                        when (result) {
+                            is Result.Success -> {
+                                // Channel is hidden
+                            }
+                            is Result.Failure -> {
+                                // Handler error
+                            }
                         }
                     }
 
                     // Shows a previously hidden channel
                     channelClient.show().enqueue { result ->
-                        if (result.isSuccess) {
-                            // Channel is shown
-                        } else {
-                            // Handle result.error()
+                        when (result) {
+                            is Result.Success -> {
+                                // Channel is shown
+                            }
+                            is Result.Failure -> {
+                                // Handler error
+                            }
                         }
                     }
 
                     // Hide the channel and clear the message history
                     channelClient.hide(clearHistory = true).enqueue { result ->
-                        if (result.isSuccess) {
-                            // Channel is hidden
-                        } else {
-                            // Handle result.error()
+                        when (result) {
+                            is Result.Success -> {
+                                // Channel is hidden
+                            }
+                            is Result.Failure -> {
+                                // Handler error
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /**
+         * @see <a href="https://getstream.io/chat/docs/android/disabling_channels/?language=kotlin">Disabling Channels</a>
+         */
+        inner class DisablingChannels {
+
+            fun freeze() {
+                val channelClient = client.channel("messaging", "general")
+
+                channelClient.updatePartial(set = mapOf("frozen" to true)).enqueue { result ->
+                    when (result) {
+                        is Result.Success -> {
+                            val channel = result.value
+                        }
+                        is Result.Failure -> {
+                            // Handler error
+                        }
+                    }
+                }
+            }
+
+            fun unfreeze() {
+                val channelClient = client.channel("messaging", "general")
+
+                channelClient.updatePartial(unset = listOf("frozen")).enqueue { result ->
+                    when (result) {
+                        is Result.Success -> {
+                            val channel = result.value
+                        }
+                        is Result.Failure -> {
+                            // Handler error
                         }
                     }
                 }
@@ -701,10 +896,13 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
                 val channelClient = client.channel("messaging", "general")
 
                 channelClient.delete().enqueue { result ->
-                    if (result.isSuccess) {
-                        val channel = result.data()
-                    } else {
-                        // Handle result.error()
+                    when (result) {
+                        is Result.Success -> {
+                            val channel = result.value
+                        }
+                        is Result.Failure -> {
+                            // Handler error
+                        }
                     }
                 }
             }
@@ -718,20 +916,26 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
             fun truncateAChannel() {
                 // Removes all of the messages of the channel but doesn't affect the channel data or members
                 channelClient.truncate().enqueue { result ->
-                    if (result.isSuccess) {
-                        // Channel is truncated
-                    } else {
-                        // Handle result.error()
+                    when (result) {
+                        is Result.Success -> {
+                            // Channel is truncated
+                        }
+                        is Result.Failure -> {
+                            // Handler error
+                        }
                     }
                 }
 
                 // Or with message parameter.
                 val message = Message(text = "Dear Everyone. The channel has been truncated.")
                 channelClient.truncate(systemMessage = message).enqueue { result ->
-                    if (result.isSuccess) {
-                        // Channel is truncated
-                    } else {
-                        // Handle result.error()
+                    when (result) {
+                        is Result.Success -> {
+                            // Channel is truncated
+                        }
+                        is Result.Failure -> {
+                            // Handler error
+                        }
                     }
                 }
             }
@@ -762,18 +966,23 @@ class Channels(val client: ChatClient, val channelClient: ChannelClient) {
 
                 // Get the cooldown value
                 channelClient.query(QueryChannelRequest()).enqueue { result ->
-                    if (result.isSuccess) {
-                        val channel = result.data()
-                        val cooldown = channel.cooldown
+                    when (result) {
+                        is Result.Success -> {
+                            val channel = result.value
+                            val cooldown = channel.cooldown
 
-                        val message = Message(text = "Hello")
-                        channelClient.sendMessage(message).enqueue {
-                            // After sending a message, block the UI temporarily
-                            // The disable/enable UI methods have to be implemented by you
-                            disableMessageSendingUi()
+                            val message = Message(text = "Hello")
+                            channelClient.sendMessage(message).enqueue {
+                                // After sending a message, block the UI temporarily
+                                // The disable/enable UI methods have to be implemented by you
+                                disableMessageSendingUi()
 
-                            Handler(Looper.getMainLooper())
-                                .postDelayed(::enableMessageSendingUi, cooldown.toLong())
+                                Handler(Looper.getMainLooper())
+                                    .postDelayed(::enableMessageSendingUi, cooldown.toLong())
+                            }
+                        }
+                        is Result.Failure -> {
+                            // Handler error
                         }
                     }
                 }

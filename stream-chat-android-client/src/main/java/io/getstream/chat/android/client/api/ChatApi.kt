@@ -17,30 +17,45 @@
 package io.getstream.chat.android.client.api
 
 import androidx.annotation.CheckResult
-import io.getstream.chat.android.client.api.models.FilterObject
+import io.getstream.chat.android.client.api.models.GetThreadOptions
 import io.getstream.chat.android.client.api.models.PinnedMessagesPagination
 import io.getstream.chat.android.client.api.models.QueryChannelRequest
 import io.getstream.chat.android.client.api.models.QueryChannelsRequest
-import io.getstream.chat.android.client.api.models.QuerySort
+import io.getstream.chat.android.client.api.models.QueryThreadsRequest
 import io.getstream.chat.android.client.api.models.QueryUsersRequest
 import io.getstream.chat.android.client.api.models.SearchMessagesRequest
 import io.getstream.chat.android.client.api.models.SendActionRequest
-import io.getstream.chat.android.client.call.Call
 import io.getstream.chat.android.client.events.ChatEvent
-import io.getstream.chat.android.client.models.AppSettings
-import io.getstream.chat.android.client.models.BannedUser
-import io.getstream.chat.android.client.models.BannedUsersSort
-import io.getstream.chat.android.client.models.Channel
-import io.getstream.chat.android.client.models.Device
-import io.getstream.chat.android.client.models.Flag
-import io.getstream.chat.android.client.models.GuestUser
-import io.getstream.chat.android.client.models.Member
-import io.getstream.chat.android.client.models.Message
-import io.getstream.chat.android.client.models.Mute
-import io.getstream.chat.android.client.models.Reaction
-import io.getstream.chat.android.client.models.SearchMessagesResult
-import io.getstream.chat.android.client.models.User
 import io.getstream.chat.android.client.utils.ProgressCallback
+import io.getstream.chat.android.models.AppSettings
+import io.getstream.chat.android.models.Attachment
+import io.getstream.chat.android.models.BannedUser
+import io.getstream.chat.android.models.BannedUsersSort
+import io.getstream.chat.android.models.Channel
+import io.getstream.chat.android.models.Device
+import io.getstream.chat.android.models.FilterObject
+import io.getstream.chat.android.models.Flag
+import io.getstream.chat.android.models.GuestUser
+import io.getstream.chat.android.models.Member
+import io.getstream.chat.android.models.MemberData
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.models.Mute
+import io.getstream.chat.android.models.Option
+import io.getstream.chat.android.models.Poll
+import io.getstream.chat.android.models.PollConfig
+import io.getstream.chat.android.models.QueryThreadsResult
+import io.getstream.chat.android.models.Reaction
+import io.getstream.chat.android.models.SearchMessagesResult
+import io.getstream.chat.android.models.Thread
+import io.getstream.chat.android.models.UploadedFile
+import io.getstream.chat.android.models.User
+import io.getstream.chat.android.models.UserBlock
+import io.getstream.chat.android.models.VideoCallInfo
+import io.getstream.chat.android.models.VideoCallToken
+import io.getstream.chat.android.models.Vote
+import io.getstream.chat.android.models.querysort.QuerySorter
+import io.getstream.result.call.Call
+import okhttp3.ResponseBody
 import java.io.File
 import java.util.Date
 
@@ -52,10 +67,20 @@ internal interface ChatApi {
     fun appSettings(): Call<AppSettings>
 
     @CheckResult
-    fun sendFile(channelType: String, channelId: String, file: File, callback: ProgressCallback? = null): Call<String>
+    fun sendFile(
+        channelType: String,
+        channelId: String,
+        file: File,
+        callback: ProgressCallback? = null,
+    ): Call<UploadedFile>
 
     @CheckResult
-    fun sendImage(channelType: String, channelId: String, file: File, callback: ProgressCallback? = null): Call<String>
+    fun sendImage(
+        channelType: String,
+        channelId: String,
+        file: File,
+        callback: ProgressCallback? = null,
+    ): Call<UploadedFile>
 
     @CheckResult
     fun deleteFile(channelType: String, channelId: String, url: String): Call<Unit>
@@ -82,7 +107,7 @@ internal interface ChatApi {
         offset: Int?,
         limit: Int?,
         next: String?,
-        sort: QuerySort<Message>?,
+        sort: QuerySorter<Message>?,
     ): Call<SearchMessagesResult>
 
     @CheckResult
@@ -94,6 +119,13 @@ internal interface ChatApi {
 
     @CheckResult
     fun getReplies(messageId: String, limit: Int): Call<List<Message>>
+
+    @CheckResult
+    fun getNewerReplies(
+        parentId: String,
+        limit: Int,
+        lastId: String?,
+    ): Call<List<Message>>
 
     @CheckResult
     fun getReactions(
@@ -115,9 +147,9 @@ internal interface ChatApi {
             reaction = Reaction(
                 messageId = messageId,
                 type = reactionType,
-                score = 0
+                score = 0,
             ),
-            enforceUnique = enforceUnique
+            enforceUnique = enforceUnique,
         )
     }
 
@@ -163,6 +195,7 @@ internal interface ChatApi {
         messageId: String,
         set: Map<String, Any>,
         unset: List<String>,
+        skipEnrichUrl: Boolean = false,
     ): Call<Message>
 
     @CheckResult
@@ -176,7 +209,7 @@ internal interface ChatApi {
         channelType: String,
         channelId: String,
         limit: Int,
-        sort: QuerySort<Message>,
+        sort: QuerySorter<Message>,
         pagination: PinnedMessagesPagination,
     ): Call<List<Message>>
 
@@ -187,11 +220,20 @@ internal interface ChatApi {
     fun updateUsers(users: List<User>): Call<List<User>>
 
     @CheckResult
+    fun blockUser(userId: String): Call<UserBlock>
+
+    @CheckResult
+    fun unblockUser(userId: String): Call<Unit>
+
+    @CheckResult
+    fun queryBlockedUsers(): Call<List<UserBlock>>
+
+    @CheckResult
     fun partialUpdateUser(
         id: String,
         set: Map<String, Any>,
         unset: List<String>,
-    ): Call<User>
+    ): Call<List<User>>
 
     fun queryChannel(
         channelType: String,
@@ -233,6 +275,28 @@ internal interface ChatApi {
         channelType: String,
         channelId: String,
         messageId: String = "",
+    ): Call<Unit>
+
+    @CheckResult
+    fun markThreadRead(
+        channelType: String,
+        channelId: String,
+        threadId: String,
+    ): Call<Unit>
+
+    @CheckResult
+    fun markUnread(
+        channelType: String,
+        channelId: String,
+        messageId: String,
+    ): Call<Unit>
+
+    @CheckResult
+    fun markThreadUnread(
+        channelType: String,
+        channelId: String,
+        threadId: String,
+        messageId: String,
     ): Call<Unit>
 
     @CheckResult
@@ -284,8 +348,10 @@ internal interface ChatApi {
     fun addMembers(
         channelType: String,
         channelId: String,
-        members: List<String>,
+        members: List<MemberData>,
         systemMessage: Message?,
+        hideHistory: Boolean?,
+        skipPush: Boolean?,
     ): Call<Channel>
 
     @CheckResult
@@ -294,7 +360,26 @@ internal interface ChatApi {
         channelId: String,
         members: List<String>,
         systemMessage: Message?,
+        skipPush: Boolean?,
     ): Call<Channel>
+
+    @CheckResult
+    fun inviteMembers(
+        channelType: String,
+        channelId: String,
+        members: List<String>,
+        systemMessage: Message?,
+        skipPush: Boolean?,
+    ): Call<Channel>
+
+    @CheckResult
+    fun partialUpdateMember(
+        channelType: String,
+        channelId: String,
+        userId: String,
+        set: Map<String, Any>,
+        unset: List<String>,
+    ): Call<Member>
 
     @CheckResult
     fun queryMembers(
@@ -303,7 +388,7 @@ internal interface ChatApi {
         offset: Int,
         limit: Int,
         filter: FilterObject,
-        sort: QuerySort<Member>,
+        sort: QuerySorter<Member>,
         members: List<Member>,
     ): Call<List<Member>>
 
@@ -319,13 +404,21 @@ internal interface ChatApi {
     ): Call<Unit>
 
     @CheckResult
-    fun flagUser(userId: String): Call<Flag>
+    fun flagUser(
+        userId: String,
+        reason: String?,
+        customData: Map<String, String>,
+    ): Call<Flag>
 
     @CheckResult
     fun unflagUser(userId: String): Call<Flag>
 
     @CheckResult
-    fun flagMessage(messageId: String): Call<Flag>
+    fun flagMessage(
+        messageId: String,
+        reason: String?,
+        customData: Map<String, String>,
+    ): Call<Flag>
 
     @CheckResult
     fun unflagMessage(messageId: String): Call<Flag>
@@ -351,7 +444,7 @@ internal interface ChatApi {
     @CheckResult
     fun queryBannedUsers(
         filter: FilterObject,
-        sort: QuerySort<BannedUsersSort>,
+        sort: QuerySorter<BannedUsersSort>,
         offset: Int?,
         limit: Int?,
         createdAtAfter: Date?,
@@ -359,6 +452,12 @@ internal interface ChatApi {
         createdAtBefore: Date?,
         createdAtBeforeOrEqual: Date?,
     ): Call<List<BannedUser>>
+
+    @CheckResult
+    fun createVideoCall(channelId: String, channelType: String, callId: String, callType: String): Call<VideoCallInfo>
+
+    @CheckResult
+    fun getVideoCallToken(callId: String): Call<VideoCallToken>
 
     @CheckResult
     fun sendEvent(
@@ -372,7 +471,57 @@ internal interface ChatApi {
     fun translate(messageId: String, language: String): Call<Message>
 
     @CheckResult
-    fun getSyncHistory(channelIds: List<String>, lastSyncAt: Date): Call<List<ChatEvent>>
+    fun og(url: String): Call<Attachment>
+
+    @CheckResult
+    fun getSyncHistory(channelIds: List<String>, lastSyncAt: String): Call<List<ChatEvent>>
+
+    @CheckResult
+    fun downloadFile(fileUrl: String): Call<ResponseBody>
+
+    /**
+     * Query threads matching [query] request.
+     *
+     * @param query [QueryThreadsRequest] with query parameters to get matching users.
+     */
+    @CheckResult
+    fun queryThreads(query: QueryThreadsRequest): Call<QueryThreadsResult>
+
+    /**
+     * Get a thread by [messageId].
+     *
+     * @param messageId The message id of the thread.
+     * @param options The options for the request.
+     */
+    @CheckResult
+    fun getThread(messageId: String, options: GetThreadOptions): Call<Thread>
+
+    @CheckResult
+    fun partialUpdateThread(
+        messageId: String,
+        set: Map<String, Any>,
+        unset: List<String>,
+    ): Call<Thread>
+
+    @CheckResult
+    fun createPoll(pollConfig: PollConfig): Call<Poll>
+
+    @CheckResult
+    fun suggestPollOption(pollId: String, option: String): Call<Option>
+
+    @CheckResult
+    fun castPollVote(messageId: String, pollId: String, optionId: String): Call<Vote>
+
+    @CheckResult
+    fun castPollAnswer(messageId: String, pollId: String, answer: String): Call<Vote>
+
+    @CheckResult
+    fun removePollVote(messageId: String, pollId: String, voteId: String): Call<Vote>
+
+    @CheckResult
+    fun closePoll(pollId: String): Call<Poll>
 
     fun warmUp()
+
+    fun releaseConnection()
 }

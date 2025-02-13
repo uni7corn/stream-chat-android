@@ -16,31 +16,21 @@
 
 package io.getstream.chat.android.offline.repository.domain.channel.internal
 
-import io.getstream.chat.android.client.models.Channel
-import io.getstream.chat.android.client.models.ChannelUserRead
-import io.getstream.chat.android.client.models.Member
-import io.getstream.chat.android.client.models.Message
-import io.getstream.chat.android.client.models.User
+import io.getstream.chat.android.client.extensions.internal.lastMessage
+import io.getstream.chat.android.client.extensions.syncUnreadCountWithReads
+import io.getstream.chat.android.models.Channel
+import io.getstream.chat.android.models.ChannelUserRead
+import io.getstream.chat.android.models.Member
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.models.User
 import io.getstream.chat.android.offline.repository.domain.channel.member.internal.MemberEntity
 import io.getstream.chat.android.offline.repository.domain.channel.member.internal.toEntity
 import io.getstream.chat.android.offline.repository.domain.channel.member.internal.toModel
 import io.getstream.chat.android.offline.repository.domain.channel.userread.internal.ChannelUserReadEntity
 import io.getstream.chat.android.offline.repository.domain.channel.userread.internal.toEntity
 import io.getstream.chat.android.offline.repository.domain.channel.userread.internal.toModel
-import io.getstream.chat.android.offline.repository.domain.message.internal.MessageEntity
-import io.getstream.chat.android.offline.repository.domain.message.internal.toEntity
-import java.util.Date
 
 internal fun Channel.toEntity(): ChannelEntity {
-    var lastMessage: MessageEntity? = null
-    var lastMessageAt: Date? = this.lastMessageAt
-    messages.lastOrNull()?.let { message ->
-        lastMessage = message.toEntity()
-
-        if (lastMessageAt == null) {
-            lastMessageAt = message.createdAt ?: message.createdLocallyAt
-        }
-    }
     return ChannelEntity(
         type = type,
         channelId = id,
@@ -58,14 +48,14 @@ internal fun Channel.toEntity(): ChannelEntity {
         members = members.map(Member::toEntity).associateBy(MemberEntity::userId).toMutableMap(),
         memberCount = memberCount,
         reads = read.map(ChannelUserRead::toEntity).associateBy(ChannelUserReadEntity::userId).toMutableMap(),
-        lastMessageId = lastMessage?.messageInnerEntity?.id,
+        lastMessageId = lastMessage?.id,
         lastMessageAt = lastMessageAt,
         createdByUserId = createdBy.id,
         watcherIds = watchers.map(User::id),
         watcherCount = watcherCount,
         team = team,
         ownCapabilities = ownCapabilities,
-        membership = membership?.toEntity()
+        membership = membership?.toEntity(),
     )
 }
 
@@ -78,13 +68,12 @@ internal suspend fun ChannelEntity.toModel(
     id = channelId,
     name = name,
     image = image,
-    cid = cid,
     frozen = frozen,
     createdAt = createdAt,
     updatedAt = updatedAt,
     deletedAt = deletedAt,
     extraData = extraData.toMutableMap(),
-    lastMessageAt = lastMessageAt,
+    channelLastMessageAt = lastMessageAt,
     syncStatus = syncStatus,
     hidden = hidden,
     hiddenMessagesBefore = hideMessagesBefore,
@@ -98,4 +87,4 @@ internal suspend fun ChannelEntity.toModel(
     team = team,
     ownCapabilities = ownCapabilities,
     membership = membership?.toModel(getUser),
-)
+).syncUnreadCountWithReads()

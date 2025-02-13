@@ -25,7 +25,7 @@ internal data class SocketErrorResponse(
 ) {
 
     @StreamHandsOff(
-        reason = "Field `StatusCode` name is right, even when it doesn't follow camelCase nor snake_case rules"
+        reason = "Field `StatusCode` name is right, even when it doesn't follow camelCase nor snake_case rules",
     )
     @JsonClass(generateAdapter = true)
     data class ErrorResponse(
@@ -34,6 +34,14 @@ internal data class SocketErrorResponse(
         val StatusCode: Int = -1,
         val duration: String = "",
         val exception_fields: Map<String, String> = mapOf(),
-        val more_info: String = ""
-    )
+        val more_info: String = "",
+        val details: List<ErrorDetail> = emptyList(),
+    ) {
+
+        @JsonClass(generateAdapter = true)
+        data class ErrorDetail(
+            val code: Int = -1,
+            val messages: List<String> = emptyList(),
+        )
+    }
 }

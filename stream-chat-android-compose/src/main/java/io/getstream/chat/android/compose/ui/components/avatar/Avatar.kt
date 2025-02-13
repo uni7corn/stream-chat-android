@@ -16,21 +16,27 @@
 
 package io.getstream.chat.android.compose.ui.components.avatar
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import coil.annotation.ExperimentalCoilApi
-import coil.compose.ImagePainter
-import coil.compose.rememberImagePainter
+import com.skydoves.landscapist.ImageOptions
+import com.skydoves.landscapist.animation.crossfade.CrossfadePlugin
+import com.skydoves.landscapist.components.rememberImageComponent
+import com.skydoves.landscapist.placeholder.placeholder.PlaceholderPlugin
 import io.getstream.chat.android.compose.R
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
+import io.getstream.chat.android.compose.ui.util.StreamImage
+import io.getstream.chat.android.ui.common.images.resizing.applyStreamCdnImageResizingIfEnabled
 
 /**
  * An avatar that renders an image from the provided image URL. In case the image URL
@@ -43,9 +49,9 @@ import io.getstream.chat.android.compose.ui.theme.ChatTheme
  * @param textStyle The text style of the [initials] text.
  * @param placeholderPainter The placeholder to render while loading is in progress.
  * @param contentDescription Description of the image.
+ * @param initialsAvatarOffset The initials offset to apply to the avatar.
  * @param onClick OnClick action, that can be nullable.
  */
-@ExperimentalCoilApi
 @Composable
 public fun Avatar(
     imageUrl: String,
@@ -55,57 +61,63 @@ public fun Avatar(
     textStyle: TextStyle = ChatTheme.typography.title3Bold,
     placeholderPainter: Painter? = null,
     contentDescription: String? = null,
+    initialsAvatarOffset: DpOffset = DpOffset(0.dp, 0.dp),
     onClick: (() -> Unit)? = null,
 ) {
-    if (LocalInspectionMode.current && imageUrl.isNotBlank()) {
-        // Show hardcoded avatar from resources when rendering previews
-        ImageAvatar(
-            modifier = modifier,
-            shape = shape,
-            painter = painterResource(id = R.drawable.stream_compose_preview_avatar),
-            contentDescription = contentDescription,
-            onClick = onClick
-        )
-        return
-    }
     if (imageUrl.isBlank()) {
         InitialsAvatar(
             modifier = modifier,
             initials = initials,
             shape = shape,
             textStyle = textStyle,
-            onClick = onClick
+            onClick = onClick,
+            avatarOffset = initialsAvatarOffset,
         )
         return
     }
 
-    val painter = rememberImagePainter(data = imageUrl)
-
-    if (painter.state is ImagePainter.State.Error) {
-        InitialsAvatar(
-            modifier = modifier,
-            initials = initials,
-            shape = shape,
-            textStyle = textStyle,
-            onClick = onClick
-        )
-    } else if (painter.state is ImagePainter.State.Loading && placeholderPainter != null) {
-        ImageAvatar(
-            modifier = modifier,
-            shape = shape,
-            painter = placeholderPainter,
-            contentDescription = contentDescription,
-            onClick = onClick
-        )
+    val cdnImageResizing = ChatTheme.streamCdnImageResizing
+    val clickableModifier = if (onClick != null) {
+        Modifier.clickable { onClick() }
     } else {
-        ImageAvatar(
-            modifier = modifier,
-            shape = shape,
-            painter = painter,
-            contentDescription = contentDescription,
-            onClick = onClick
-        )
+        Modifier
     }
+    StreamImage(
+        modifier = modifier
+            .testTag("Stream_QuotedMessageAuthorAvatar")
+            .clip(shape)
+            .then(clickableModifier),
+        data = { imageUrl.applyStreamCdnImageResizingIfEnabled(cdnImageResizing) },
+        loading = {
+            if (placeholderPainter != null) {
+                ImageAvatar(
+                    modifier = modifier,
+                    shape = shape,
+                    painter = placeholderPainter,
+                    contentDescription = contentDescription,
+                    onClick = onClick,
+                )
+            }
+        },
+        failure = {
+            InitialsAvatar(
+                modifier = modifier,
+                initials = initials,
+                shape = shape,
+                textStyle = textStyle,
+                onClick = onClick,
+                avatarOffset = initialsAvatarOffset,
+            )
+        },
+        component = rememberImageComponent {
+            if (placeholderPainter == null) {
+                +PlaceholderPlugin.Loading(painterResource(id = R.drawable.stream_compose_preview_avatar))
+            }
+            +CrossfadePlugin()
+        },
+        previewPlaceholder = painterResource(id = R.drawable.stream_compose_preview_avatar),
+        imageOptions = ImageOptions(contentDescription = contentDescription),
+    )
 }
 
 /**
@@ -118,7 +130,7 @@ public fun Avatar(
 private fun AvatarWithImageUrlPreview() {
     AvatarPreview(
         imageUrl = "https://sample.com/image.png",
-        initials = "JC"
+        initials = "JC",
     )
 }
 
@@ -132,7 +144,7 @@ private fun AvatarWithImageUrlPreview() {
 private fun AvatarWithoutImageUrlPreview() {
     AvatarPreview(
         imageUrl = "",
-        initials = "JC"
+        initials = "JC",
     )
 }
 
@@ -151,7 +163,7 @@ private fun AvatarPreview(
         Avatar(
             modifier = Modifier.size(36.dp),
             imageUrl = imageUrl,
-            initials = initials
+            initials = initials,
         )
     }
 }

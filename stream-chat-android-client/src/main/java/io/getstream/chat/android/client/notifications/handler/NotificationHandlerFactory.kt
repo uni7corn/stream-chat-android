@@ -17,13 +17,23 @@
 package io.getstream.chat.android.client.notifications.handler
 
 import android.annotation.SuppressLint
+import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.core.app.NotificationCompat
+import androidx.core.graphics.drawable.IconCompat
+import io.getstream.android.push.permissions.DefaultNotificationPermissionHandler
+import io.getstream.android.push.permissions.NotificationPermissionHandler
 import io.getstream.chat.android.client.R
+import io.getstream.chat.android.client.receivers.NotificationMessageReceiver
+import io.getstream.chat.android.models.Channel
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.models.User
+import kotlin.reflect.full.primaryConstructor
 
 /**
  * Factory for default [NotificationHandler].
@@ -35,30 +45,74 @@ public object NotificationHandlerFactory {
      * Method that creates a [NotificationHandler].
      *
      * @param context The [Context] to build the [NotificationHandler] with.
+     * @param notificationConfig Configuration for push notifications.
      * @param newMessageIntent Lambda expression used to generate an [Intent] to open your app
      * @param notificationChannel Lambda expression used to generate a [NotificationChannel].
      * Used in SDK_INT >= VERSION_CODES.O.
+     * @param userIconBuilder Generates [IconCompat] to be shown on notifications.
+     * @param permissionHandler Handles [android.Manifest.permission.POST_NOTIFICATIONS] permission lifecycle.
+     * @param notificationTextFormatter Lambda expression used to formats the text of the notification.
+     * @param actionsProvider Lambda expression used to provide actions for the notification.
      */
     @SuppressLint("NewApi")
+    @JvmOverloads
+    @JvmStatic
     public fun createNotificationHandler(
         context: Context,
-        newMessageIntent: ((messageId: String, channelType: String, channelId: String) -> Intent)? = null,
-        notificationChannel: (() -> NotificationChannel)? = null,
-    ): NotificationHandler {
-        val notificationChannelFun = notificationChannel ?: getDefaultNotificationChannel(context)
-        (newMessageIntent ?: getDefaultNewMessageIntentFun(context)).let { newMessageIntentFun ->
-            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                MessagingStyleNotificationHandler(context, newMessageIntentFun, notificationChannelFun)
-            } else {
-                ChatNotificationHandler(context, newMessageIntentFun, notificationChannelFun)
-            }
+        notificationConfig: NotificationConfig,
+        newMessageIntent: ((message: Message, channel: Channel) -> Intent) = getDefaultNewMessageIntentFun(context),
+        notificationChannel: (() -> NotificationChannel) = getDefaultNotificationChannel(context),
+        userIconBuilder: UserIconBuilder = provideDefaultUserIconBuilder(context),
+        permissionHandler: NotificationPermissionHandler? = provideDefaultNotificationPermissionHandler(context),
+        notificationTextFormatter: ((currentUser: User?, message: Message) -> CharSequence) =
+            getDefaultNotificationTextFormatter(notificationConfig),
+        actionsProvider: (notificationId: Int, channel: Channel, message: Message) -> List<NotificationCompat.Action> =
+            getDefaultActionsProvider(context),
+    ): NotificationHandler = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        MessagingStyleNotificationHandler(
+            context = context,
+            newMessageIntent = newMessageIntent,
+            notificationChannel = notificationChannel,
+            userIconBuilder = userIconBuilder,
+            permissionHandler = permissionHandler,
+            notificationTextFormatter = notificationTextFormatter,
+            actionsProvider = actionsProvider,
+        )
+    } else {
+        ChatNotificationHandler(
+            context = context,
+            newMessageIntent = newMessageIntent,
+            notificationChannel = notificationChannel,
+            notificationTextFormatter = notificationTextFormatter,
+            actionsProvider = actionsProvider,
+        )
+    }
+
+    private fun getDefaultActionsProvider(
+        context: Context,
+    ): (notificationId: Int, channel: Channel, message: Message) -> List<NotificationCompat.Action> =
+        { notificationId, channel, message ->
+            listOf(
+                NotificationMessageReceiver.createReadAction(context, notificationId, channel, message),
+                NotificationMessageReceiver.createReplyAction(context, notificationId, channel),
+            )
+        }
+
+    private fun getDefaultNotificationTextFormatter(
+        notificationConfig: NotificationConfig,
+    ): (currentUser: User?, message: Message) -> CharSequence = { currentUser, message ->
+        when (notificationConfig.autoTranslationEnabled) {
+            true -> currentUser?.language?.let { userLanguage ->
+                message.getTranslation(userLanguage).ifEmpty { message.text }
+            } ?: message.text
+            else -> message.text
         }
     }
 
     private fun getDefaultNewMessageIntentFun(
-        context: Context
-    ): (messageId: String, channelType: String, channelId: String) -> Intent {
-        return { _, _, _ -> createDefaultNewMessageIntent(context) }
+        context: Context,
+    ): (message: Message, channel: Channel) -> Intent {
+        return { _, _ -> createDefaultNewMessageIntent(context) }
     }
 
     private fun createDefaultNewMessageIntent(context: Context): Intent =
@@ -72,6 +126,62 @@ public object NotificationHandlerFactory {
                 context.getString(R.string.stream_chat_notification_channel_name),
                 NotificationManager.IMPORTANCE_DEFAULT,
             )
+        }
+    }
+
+    private fun provideDefaultUserIconBuilder(context: Context): UserIconBuilder {
+        // We search for the StreamCoilUserIconBuilder by reflection and this is slow - we need
+        // to postpone to not block the SDK initialisation
+        return object : UserIconBuilder {
+            private val builder by lazy {
+                val appContext = context.applicationContext
+                runCatching {
+                    Class.forName(
+                        "io.getstream.chat.android.ui.common.notifications." +
+                            "StreamCoilUserIconBuilder",
+                    )
+                        .kotlin.primaryConstructor
+                        ?.call(appContext) as UserIconBuilder
+                }.getOrDefault(DefaultUserIconBuilder(appContext))
+            }
+
+            override suspend fun buildIcon(user: User): IconCompat? {
+                return builder.buildIcon(user)
+            }
+        }
+    }
+
+    private fun provideDefaultNotificationPermissionHandler(context: Context): NotificationPermissionHandler {
+        // We search for the SnackbarNotificationPermissionHandler by reflection and this is slow - we need
+        // to postpone to not block the SDK initialisation
+        return object : NotificationPermissionHandler {
+            private val handler by lazy {
+                val appContext = context.applicationContext
+                runCatching {
+                    Class.forName(
+                        "io.getstream.android.push.permissions.snackbar.SnackbarNotificationPermissionHandler",
+                    ).kotlin.primaryConstructor?.call(appContext) as NotificationPermissionHandler
+                }.getOrDefault(
+                    DefaultNotificationPermissionHandler
+                        .createDefaultNotificationPermissionHandler(appContext as Application),
+                )
+            }
+
+            override fun onPermissionDenied() {
+                handler.onPermissionDenied()
+            }
+
+            override fun onPermissionGranted() {
+                handler.onPermissionGranted()
+            }
+
+            override fun onPermissionRationale() {
+                handler.onPermissionRationale()
+            }
+
+            override fun onPermissionRequested() {
+                handler.onPermissionRequested()
+            }
         }
     }
 }

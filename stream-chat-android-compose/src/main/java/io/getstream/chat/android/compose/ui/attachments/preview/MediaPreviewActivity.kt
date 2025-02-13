@@ -28,30 +28,36 @@ import android.widget.MediaController
 import android.widget.ProgressBar
 import android.widget.Toast
 import android.widget.VideoView
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Text
-import androidx.compose.material.TopAppBar
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.isVisible
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import io.getstream.chat.android.client.ChatClient
 import io.getstream.chat.android.compose.R
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
 import io.getstream.chat.android.compose.ui.util.mirrorRtl
@@ -62,30 +68,34 @@ import io.getstream.chat.android.compose.ui.util.mirrorRtl
 public class MediaPreviewActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        setupEdgeToEdge()
         super.onCreate(savedInstanceState)
         val url = intent.getStringExtra(KEY_URL)
         val title = intent.getStringExtra(KEY_TITLE) ?: ""
 
-        if (url.isNullOrEmpty()) {
+        if (url.isNullOrEmpty() || ChatClient.isInitialized.not()) {
             finish()
             return
         }
 
         setContent {
             ChatTheme {
-                SetupSystemUI()
                 MediaPreviewScreen(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black)
+                        .windowInsetsPadding(WindowInsets.systemBars),
                     url = url,
                     title = title,
                     onPlaybackError = {
                         Toast.makeText(
                             this,
                             R.string.stream_ui_message_list_attachment_display_error,
-                            Toast.LENGTH_SHORT
+                            Toast.LENGTH_SHORT,
                         ).show()
                         finish()
                     },
-                    onBackPressed = { finish() }
+                    onBackPressed = { finish() },
                 )
             }
         }
@@ -101,6 +111,7 @@ public class MediaPreviewActivity : AppCompatActivity() {
      */
     @Composable
     private fun MediaPreviewScreen(
+        modifier: Modifier = Modifier,
         url: String,
         title: String,
         onPlaybackError: () -> Unit,
@@ -109,33 +120,19 @@ public class MediaPreviewActivity : AppCompatActivity() {
         BackHandler(enabled = true, onBack = onBackPressed)
 
         Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            backgroundColor = Color.Black,
+            modifier = modifier,
+            containerColor = Color.Black,
             topBar = { MediaPreviewToolbar(title, onBackPressed) },
-            content = { MediaPreviewContent(url, onBackPressed, onPlaybackError) }
+            content = { MediaPreviewContent(url, onBackPressed, onPlaybackError) },
         )
     }
 
-    /**
-     * Responsible for updating the system UI.
-     */
-    @Composable
-    private fun SetupSystemUI() {
-        val systemUiController = rememberSystemUiController()
-
-        val statusBarColor = Color.Black
-        val navigationBarColor = Color.Black
-
-        SideEffect {
-            systemUiController.setStatusBarColor(
-                color = statusBarColor,
-                darkIcons = false
-            )
-            systemUiController.setNavigationBarColor(
-                color = navigationBarColor,
-                darkIcons = false
-            )
-        }
+    private fun setupEdgeToEdge() {
+        val barsColor = Color.Black.toArgb()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(barsColor),
+            navigationBarStyle = SystemBarStyle.dark(barsColor),
+        )
     }
 
     /**
@@ -144,18 +141,18 @@ public class MediaPreviewActivity : AppCompatActivity() {
      * @param title The name of the file for playback.
      * @param onBackPressed Handler for back press action.
      */
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun MediaPreviewToolbar(
         title: String,
         onBackPressed: () -> Unit = {},
     ) {
         TopAppBar(
-            backgroundColor = Color.Black,
-            elevation = 0.dp,
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black),
             navigationIcon = {
                 IconButton(
                     modifier = Modifier.mirrorRtl(LocalLayoutDirection.current),
-                    onClick = { onBackPressed() }
+                    onClick = { onBackPressed() },
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.stream_compose_ic_arrow_back),
@@ -171,9 +168,9 @@ public class MediaPreviewActivity : AppCompatActivity() {
                     textAlign = TextAlign.Start,
                     style = ChatTheme.typography.body,
                     maxLines = 1,
-                    color = Color.White
+                    color = Color.White,
                 )
-            }
+            },
         )
     }
 
@@ -198,14 +195,14 @@ public class MediaPreviewActivity : AppCompatActivity() {
             val frameLayout = FrameLayout(context).apply {
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
+                    ViewGroup.LayoutParams.MATCH_PARENT,
                 )
             }
 
             val progressBar = ProgressBar(context).apply {
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
                 ).apply {
                     gravity = Gravity.CENTER
                 }
@@ -230,7 +227,7 @@ public class MediaPreviewActivity : AppCompatActivity() {
 
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
+                    ViewGroup.LayoutParams.MATCH_PARENT,
                 ).apply {
                     gravity = Gravity.CENTER
                 }

@@ -16,11 +16,12 @@
 
 package io.getstream.chat.android.client.notifications.handler
 
+import io.getstream.android.push.permissions.NotificationPermissionStatus
 import io.getstream.chat.android.client.ChatClient
 import io.getstream.chat.android.client.events.NewMessageEvent
-import io.getstream.chat.android.client.models.Channel
-import io.getstream.chat.android.client.models.Message
-import io.getstream.chat.android.client.models.PushMessage
+import io.getstream.chat.android.models.Channel
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.models.PushMessage
 
 /**
  * Handler responsible for showing and dismissing notification.
@@ -72,4 +73,11 @@ public interface NotificationHandler {
      * Dismiss all notifications.
      */
     public fun dismissAllNotifications()
+
+    /**
+     * Handles [android.Manifest.permission.POST_NOTIFICATIONS] permission lifecycle.
+     *
+     * @param status Represents current [android.Manifest.permission.POST_NOTIFICATIONS] permission status.
+     */
+    public fun onNotificationPermissionStatus(status: NotificationPermissionStatus)
 }

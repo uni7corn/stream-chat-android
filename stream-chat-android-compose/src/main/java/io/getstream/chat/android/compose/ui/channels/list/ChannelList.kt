@@ -23,11 +23,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -35,19 +37,21 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.getstream.chat.android.client.ChatClient
-import io.getstream.chat.android.client.api.models.QuerySort
-import io.getstream.chat.android.client.models.Channel
-import io.getstream.chat.android.client.models.User
 import io.getstream.chat.android.compose.R
-import io.getstream.chat.android.compose.previewdata.PreviewChannelData
-import io.getstream.chat.android.compose.previewdata.PreviewUserData
-import io.getstream.chat.android.compose.state.channels.list.ChannelItemState
 import io.getstream.chat.android.compose.state.channels.list.ChannelsState
+import io.getstream.chat.android.compose.state.channels.list.ItemState
 import io.getstream.chat.android.compose.ui.components.EmptyContent
 import io.getstream.chat.android.compose.ui.components.LoadingIndicator
+import io.getstream.chat.android.compose.ui.theme.ChatPreviewTheme
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
 import io.getstream.chat.android.compose.viewmodel.channels.ChannelListViewModel
 import io.getstream.chat.android.compose.viewmodel.channels.ChannelViewModelFactory
+import io.getstream.chat.android.models.Channel
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.models.User
+import io.getstream.chat.android.models.querysort.QuerySortByField
+import io.getstream.chat.android.previewdata.PreviewChannelData
+import io.getstream.chat.android.previewdata.PreviewUserData
 
 /**
  * Default ChannelList component, that relies on the [ChannelListViewModel] to load the data and
@@ -62,6 +66,7 @@ import io.getstream.chat.android.compose.viewmodel.channels.ChannelViewModelFact
  * @param onLastItemReached Handler for pagination, when the user reaches the last item in the list.
  * @param onChannelClick Handler for a single item tap.
  * @param onChannelLongClick Handler for a long item tap.
+ * @param onSearchResultClick Handler for a single search result tap.
  * @param loadingContent Composable that represents the loading content, when we're loading the initial data.
  * @param emptyContent Composable that represents the empty content if there are no channels.
  * @param emptySearchContent Composable that represents the empty content if there are no channels matching the search
@@ -69,7 +74,7 @@ import io.getstream.chat.android.compose.viewmodel.channels.ChannelViewModelFact
  * @param helperContent Composable that represents the helper content. Empty by default, but can be used to implement
  * scroll to top button.
  * @param loadingMoreContent: Composable that represents the loading more content, when we're loading the next page.
- * @param itemContent Composable that allows the user to completely customize the item UI.
+ * @param channelContent Composable that allows the user to completely customize the item UI.
  * It shows [ChannelItem] if left unchanged, with the actions provided by [onChannelClick] and
  * [onChannelLongClick].
  * @param divider Composable that allows the user to define an item divider.
@@ -82,35 +87,63 @@ public fun ChannelList(
         factory =
         ChannelViewModelFactory(
             ChatClient.instance(),
-            QuerySort.desc("last_updated"),
-            filters = null
-        )
+            QuerySortByField.descByName("last_updated"),
+            filters = null,
+        ),
     ),
     lazyListState: LazyListState = rememberLazyListState(),
-    onLastItemReached: () -> Unit = { viewModel.loadMore() },
+    onLastItemReached: () -> Unit = remember(viewModel) { { viewModel.loadMore() } },
     onChannelClick: (Channel) -> Unit = {},
-    onChannelLongClick: (Channel) -> Unit = { viewModel.selectChannel(it) },
-    loadingContent: @Composable () -> Unit = { LoadingIndicator(modifier) },
-    emptyContent: @Composable () -> Unit = { DefaultChannelListEmptyContent(modifier) },
+    onChannelLongClick: (Channel) -> Unit = remember(viewModel) { { viewModel.selectChannel(it) } },
+    onSearchResultClick: (Message) -> Unit = {},
+    loadingContent: @Composable () -> Unit = {
+        ChatTheme.componentFactory.ChannelListLoadingIndicator(modifier = modifier)
+    },
+    emptyContent: @Composable () -> Unit = {
+        ChatTheme.componentFactory.ChannelListEmptyContent(modifier = modifier)
+    },
     emptySearchContent: @Composable (String) -> Unit = { searchQuery ->
-        DefaultChannelSearchEmptyContent(
+        ChatTheme.componentFactory.ChannelListEmptySearchContent(
             searchQuery = searchQuery,
-            modifier = modifier
+            modifier = modifier,
         )
     },
-    helperContent: @Composable BoxScope.() -> Unit = {},
-    loadingMoreContent: @Composable () -> Unit = { DefaultChannelsLoadingMoreIndicator() },
-    itemContent: @Composable (ChannelItemState) -> Unit = { channelItem ->
+    helperContent: @Composable BoxScope.() -> Unit = {
+        with(ChatTheme.componentFactory) {
+            ChannelListHelperContent()
+        }
+    },
+    loadingMoreContent: @Composable LazyItemScope.() -> Unit = {
+        with(ChatTheme.componentFactory) {
+            ChannelListLoadingMoreItemContent()
+        }
+    },
+    channelContent: @Composable LazyItemScope.(ItemState.ChannelItemState) -> Unit = { itemState ->
         val user by viewModel.user.collectAsState()
-
-        DefaultChannelItem(
-            channelItem = channelItem,
-            currentUser = user,
-            onChannelClick = onChannelClick,
-            onChannelLongClick = onChannelLongClick
-        )
+        with(ChatTheme.componentFactory) {
+            ChannelListItemContent(
+                channelItem = itemState,
+                currentUser = user,
+                onChannelClick = onChannelClick,
+                onChannelLongClick = onChannelLongClick,
+            )
+        }
     },
-    divider: @Composable () -> Unit = { DefaultChannelItemDivider() },
+    searchResultContent: @Composable LazyItemScope.(ItemState.SearchResultItemState) -> Unit = { itemState ->
+        val user by viewModel.user.collectAsState()
+        with(ChatTheme.componentFactory) {
+            SearchResultItemContent(
+                searchResultItem = itemState,
+                currentUser = user,
+                onSearchResultClick = onSearchResultClick,
+            )
+        }
+    },
+    divider: @Composable LazyItemScope.() -> Unit = {
+        with(ChatTheme.componentFactory) {
+            ChannelListDividerItem()
+        }
+    },
 ) {
     val user by viewModel.user.collectAsState()
 
@@ -128,8 +161,9 @@ public fun ChannelList(
         emptySearchContent = emptySearchContent,
         helperContent = helperContent,
         loadingMoreContent = loadingMoreContent,
-        itemContent = itemContent,
-        divider = divider
+        channelContent = channelContent,
+        searchResultContent = searchResultContent,
+        divider = divider,
     )
 }
 
@@ -154,6 +188,7 @@ public fun ChannelList(
  * @param onLastItemReached Handler for pagination, when the user reaches the end of the list.
  * @param onChannelClick Handler for a single item tap.
  * @param onChannelLongClick Handler for a long item tap.
+ * @param onSearchResultClick Handler for a single search result tap.
  * @param loadingContent Composable that represents the loading content, when we're loading the initial data.
  * @param emptyContent Composable that represents the empty content if there are no channels.
  * @param emptySearchContent Composable that represents the empty content if there are no channels matching the search
@@ -161,9 +196,11 @@ public fun ChannelList(
  * @param helperContent Composable that represents the helper content. Empty by default, but can be used to implement
  * scroll to top button.
  * @param loadingMoreContent: Composable that represents the loading more content, when we're loading the next page.
- * @param itemContent Composable that allows the user to completely customize the item UI.
+ * @param channelContent Composable that allows the user to completely customize the item UI.
  * It shows [ChannelItem] if left unchanged, with the actions provided by [onChannelClick] and
  * [onChannelLongClick].
+ * @param searchResultContent Composable that allows the user to completely customize the search result item UI.
+ * It shows [SearchResultItem] if left unchanged, with the actions provided by [onSearchResultClick].
  * @param divider Composable that allows the user to define an item divider.
  */
 @Composable
@@ -176,67 +213,100 @@ public fun ChannelList(
     onLastItemReached: () -> Unit = {},
     onChannelClick: (Channel) -> Unit = {},
     onChannelLongClick: (Channel) -> Unit = {},
-    loadingContent: @Composable () -> Unit = { DefaultChannelListLoadingIndicator(modifier) },
-    emptyContent: @Composable () -> Unit = { DefaultChannelListEmptyContent(modifier) },
+    onSearchResultClick: (Message) -> Unit = {},
+    loadingContent: @Composable () -> Unit = {
+        ChatTheme.componentFactory.ChannelListLoadingIndicator(modifier = modifier)
+    },
+    emptyContent: @Composable () -> Unit = {
+        ChatTheme.componentFactory.ChannelListEmptyContent(modifier = modifier)
+    },
     emptySearchContent: @Composable (String) -> Unit = { searchQuery ->
-        DefaultChannelSearchEmptyContent(
+        ChatTheme.componentFactory.ChannelListEmptySearchContent(
             searchQuery = searchQuery,
-            modifier = modifier
+            modifier = modifier,
         )
     },
-    helperContent: @Composable BoxScope.() -> Unit = {},
-    loadingMoreContent: @Composable () -> Unit = { DefaultChannelsLoadingMoreIndicator() },
-    itemContent: @Composable (ChannelItemState) -> Unit = { channelItem ->
-        DefaultChannelItem(
-            channelItem = channelItem,
-            currentUser = currentUser,
-            onChannelClick = onChannelClick,
-            onChannelLongClick = onChannelLongClick
-        )
+    helperContent: @Composable BoxScope.() -> Unit = {
+        with(ChatTheme.componentFactory) {
+            ChannelListHelperContent()
+        }
     },
-    divider: @Composable () -> Unit = { DefaultChannelItemDivider() },
+    loadingMoreContent: @Composable LazyItemScope.() -> Unit = {
+        with(ChatTheme.componentFactory) {
+            ChannelListLoadingMoreItemContent()
+        }
+    },
+    channelContent: @Composable LazyItemScope.(ItemState.ChannelItemState) -> Unit = { channelItem ->
+        with(ChatTheme.componentFactory) {
+            ChannelListItemContent(
+                channelItem = channelItem,
+                currentUser = currentUser,
+                onChannelClick = onChannelClick,
+                onChannelLongClick = onChannelLongClick,
+            )
+        }
+    },
+    searchResultContent: @Composable LazyItemScope.(ItemState.SearchResultItemState) -> Unit = { searchResultItem ->
+        with(ChatTheme.componentFactory) {
+            SearchResultItemContent(
+                searchResultItem = searchResultItem,
+                currentUser = currentUser,
+                onSearchResultClick = onSearchResultClick,
+            )
+        }
+    },
+    divider: @Composable LazyItemScope.() -> Unit = {
+        with(ChatTheme.componentFactory) {
+            ChannelListDividerItem()
+        }
+    },
 ) {
     val (isLoading, _, _, channels, searchQuery) = channelsState
 
     when {
+        channels.isNotEmpty() -> {
+            Channels(
+                modifier = modifier,
+                contentPadding = contentPadding,
+                channelsState = channelsState,
+                lazyListState = lazyListState,
+                onLastItemReached = onLastItemReached,
+                helperContent = helperContent,
+                loadingMoreContent = loadingMoreContent,
+                itemContent = { itemState ->
+                    WrapperItemContent(
+                        itemState = itemState,
+                        channelContent = channelContent,
+                        searchResultContent = searchResultContent,
+                    )
+                },
+                divider = divider,
+            )
+        }
+
         isLoading -> loadingContent()
-        !isLoading && channels.isNotEmpty() -> Channels(
-            modifier = modifier,
-            contentPadding = contentPadding,
-            channelsState = channelsState,
-            lazyListState = lazyListState,
-            onLastItemReached = onLastItemReached,
-            helperContent = helperContent,
-            loadingMoreContent = loadingMoreContent,
-            itemContent = itemContent,
-            divider = divider
-        )
-        searchQuery.isNotEmpty() -> emptySearchContent(searchQuery)
-        else -> emptyContent()
+        searchQuery.query.isBlank() -> emptyContent()
+        else -> emptySearchContent(searchQuery.query)
     }
 }
 
 /**
- * The default channel item.
+ * The default item.
  *
- * @param channelItem The item to represent.
- * @param currentUser The currently logged in user.
- * @param onChannelClick Handler when the user clicks on an item.
- * @param onChannelLongClick Handler when the user long taps on an item.
+ * @param itemState The item to represent.
+ * @param channelContent Composable that represents the channel item.
+ * @param searchResultContent Composable that represents the search result item.
  */
 @Composable
-internal fun DefaultChannelItem(
-    channelItem: ChannelItemState,
-    currentUser: User?,
-    onChannelClick: (Channel) -> Unit,
-    onChannelLongClick: (Channel) -> Unit,
+internal fun LazyItemScope.WrapperItemContent(
+    itemState: ItemState,
+    channelContent: @Composable LazyItemScope.(ItemState.ChannelItemState) -> Unit,
+    searchResultContent: @Composable LazyItemScope.(ItemState.SearchResultItemState) -> Unit,
 ) {
-    ChannelItem(
-        channelItem = channelItem,
-        currentUser = currentUser,
-        onChannelClick = onChannelClick,
-        onChannelLongClick = onChannelLongClick
-    )
+    when (itemState) {
+        is ItemState.ChannelItemState -> channelContent(itemState)
+        is ItemState.SearchResultItemState -> searchResultContent(itemState)
+    }
 }
 
 /**
@@ -290,7 +360,7 @@ public fun DefaultChannelItemDivider() {
         modifier = Modifier
             .fillMaxWidth()
             .height(0.5.dp)
-            .background(color = ChatTheme.colors.borders)
+            .background(color = ChatTheme.colors.borders),
     )
 }
 
@@ -306,13 +376,28 @@ private fun ChannelListForContentStatePreview() {
         ChannelsState(
             isLoading = false,
             channelItems = listOf(
-                ChannelItemState(channel = PreviewChannelData.channelWithImage),
-                ChannelItemState(channel = PreviewChannelData.channelWithMessages),
-                ChannelItemState(channel = PreviewChannelData.channelWithFewMembers),
-                ChannelItemState(channel = PreviewChannelData.channelWithManyMembers),
-                ChannelItemState(channel = PreviewChannelData.channelWithOnlineUser)
-            )
-        )
+                ItemState.ChannelItemState(
+                    channel = PreviewChannelData.channelWithImage,
+                    typingUsers = emptyList(),
+                ),
+                ItemState.ChannelItemState(
+                    channel = PreviewChannelData.channelWithMessages,
+                    typingUsers = emptyList(),
+                ),
+                ItemState.ChannelItemState(
+                    channel = PreviewChannelData.channelWithFewMembers,
+                    typingUsers = emptyList(),
+                ),
+                ItemState.ChannelItemState(
+                    channel = PreviewChannelData.channelWithManyMembers,
+                    typingUsers = emptyList(),
+                ),
+                ItemState.ChannelItemState(
+                    channel = PreviewChannelData.channelWithOnlineUser,
+                    typingUsers = emptyList(),
+                ),
+            ),
+        ),
     )
 }
 
@@ -327,8 +412,8 @@ private fun ChannelListForEmptyStatePreview() {
     ChannelListPreview(
         ChannelsState(
             isLoading = false,
-            channelItems = emptyList()
-        )
+            channelItems = emptyList(),
+        ),
     )
 }
 
@@ -342,8 +427,8 @@ private fun ChannelListForEmptyStatePreview() {
 private fun ChannelListForLoadingStatePreview() {
     ChannelListPreview(
         ChannelsState(
-            isLoading = true
-        )
+            isLoading = true,
+        ),
     )
 }
 
@@ -354,7 +439,7 @@ private fun ChannelListForLoadingStatePreview() {
  */
 @Composable
 private fun ChannelListPreview(channelsState: ChannelsState) {
-    ChatTheme {
+    ChatPreviewTheme {
         ChannelList(
             modifier = Modifier.fillMaxSize(),
             channelsState = channelsState,

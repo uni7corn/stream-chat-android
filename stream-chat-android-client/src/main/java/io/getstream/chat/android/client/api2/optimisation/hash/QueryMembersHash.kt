@@ -16,9 +16,9 @@
 
 package io.getstream.chat.android.client.api2.optimisation.hash
 
-import io.getstream.chat.android.client.api.models.FilterObject
-import io.getstream.chat.android.client.api.models.QuerySort
-import io.getstream.chat.android.client.models.Member
+import io.getstream.chat.android.models.FilterObject
+import io.getstream.chat.android.models.Member
+import io.getstream.chat.android.models.querysort.QuerySorter
 
 internal data class QueryMembersHash(
     val channelType: String,
@@ -26,6 +26,6 @@ internal data class QueryMembersHash(
     val offset: Int,
     val limit: Int,
     val filter: FilterObject,
-    val sort: QuerySort<Member>,
+    val sort: QuerySorter<Member>,
     val members: List<Member>,
 )

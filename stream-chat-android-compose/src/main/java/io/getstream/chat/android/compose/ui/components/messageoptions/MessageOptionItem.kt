@@ -17,11 +17,9 @@
 package io.getstream.chat.android.compose.ui.components.messageoptions
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.Icon
-import androidx.compose.material.Text
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,11 +27,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import io.getstream.chat.android.common.state.Reply
 import io.getstream.chat.android.compose.R
-import io.getstream.chat.android.compose.previewdata.PreviewMessageData
 import io.getstream.chat.android.compose.state.messageoptions.MessageOptionItemState
+import io.getstream.chat.android.compose.ui.components.common.MenuOptionItem
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
+import io.getstream.chat.android.previewdata.PreviewMessageData
+import io.getstream.chat.android.ui.common.state.messages.Reply
 
 /**
  * Each option item in the column of options.
@@ -44,32 +43,37 @@ import io.getstream.chat.android.compose.ui.theme.ChatTheme
  * @param horizontalArrangement Used to apply horizontal arrangement.
  */
 @Composable
+@Deprecated(
+    message = "This class is deprecated and will be removed in the next version.",
+    replaceWith = ReplaceWith("GenericMenuOptionItem"),
+    level = DeprecationLevel.WARNING,
+)
 public fun MessageOptionItem(
     option: MessageOptionItemState,
     modifier: Modifier = Modifier,
     verticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
     horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
+    onMessageOptionItemSelected: (MessageOptionItemState) -> Unit = {},
 ) {
     val title = stringResource(id = option.title)
-
-    Row(
+    MenuOptionItem(
         modifier = modifier,
+        title = title,
+        titleColor = option.titleColor,
+        leadingIcon = {
+            Icon(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                painter = option.iconPainter,
+                tint = option.iconColor,
+                contentDescription = title,
+            )
+        },
+        onClick = { onMessageOptionItemSelected(option) },
+        style = ChatTheme.typography.body,
+        itemHeight = 56.dp,
         verticalAlignment = verticalAlignment,
-        horizontalArrangement = horizontalArrangement
-    ) {
-        Icon(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            painter = option.iconPainter,
-            tint = option.iconColor,
-            contentDescription = title,
-        )
-
-        Text(
-            text = title,
-            style = ChatTheme.typography.body,
-            color = option.titleColor
-        )
-    }
+        horizontalArrangement = horizontalArrangement,
+    )
 }
 
 /**
@@ -89,7 +93,7 @@ private fun MessageOptionItemPreview() {
 
         MessageOptionItem(
             modifier = Modifier.fillMaxWidth(),
-            option = option
+            option = option,
         )
     }
 }

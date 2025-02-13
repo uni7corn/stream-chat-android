@@ -18,22 +18,34 @@ package io.getstream.chat.android.client.events
 
 import io.getstream.chat.android.client.clientstate.DisconnectCause
 import io.getstream.chat.android.client.errors.ChatError
-import io.getstream.chat.android.client.models.Channel
-import io.getstream.chat.android.client.models.Member
-import io.getstream.chat.android.client.models.Message
-import io.getstream.chat.android.client.models.Reaction
-import io.getstream.chat.android.client.models.User
+import io.getstream.chat.android.models.Answer
+import io.getstream.chat.android.models.Channel
+import io.getstream.chat.android.models.Member
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.models.Poll
+import io.getstream.chat.android.models.Reaction
+import io.getstream.chat.android.models.ThreadInfo
+import io.getstream.chat.android.models.User
+import io.getstream.chat.android.models.Vote
+import io.getstream.result.Error
 import java.util.Date
+import java.util.concurrent.atomic.AtomicInteger
+
+private val seqGenerator = AtomicInteger()
 
 public sealed class ChatEvent {
     public abstract val type: String
     public abstract val createdAt: Date
+    public abstract val rawCreatedAt: String?
+
+    public val seq: Int = seqGenerator.incrementAndGet()
 }
 
 public sealed class CidEvent : ChatEvent() {
     public abstract val cid: String
     public abstract val channelType: String
     public abstract val channelId: String
+    public abstract val channelLastMessageAt: Date?
 }
 
 public sealed interface UserEvent {
@@ -60,6 +72,10 @@ public sealed interface HasOwnUser {
     public val me: User
 }
 
+public sealed interface HasPoll {
+    public val poll: Poll
+}
+
 /**
  * Interface that marks a [ChatEvent] as having the information about watcher count.
  *
@@ -81,6 +97,7 @@ public sealed interface HasWatcherCount {
  * - message.new
  * - notification.message_new
  * - notification.mark_read
+ * - notification.mark_unread
  * - notification.added_to_channel
  * - notification.channel_deleted
  * - notification.channel_truncated
@@ -91,15 +108,28 @@ public sealed interface HasUnreadCounts {
 }
 
 /**
+ * Interface that marks a [ChatEvent] as having the information about unread thread counts.
+ *
+ * The list of events which contains unread counts:
+ * - notification.thread_message_new
+ */
+public sealed interface HasUnreadThreadCounts {
+    public val unreadThreads: Int?
+    public val unreadThreadMessages: Int?
+}
+
+/**
  * Triggered when a channel is deleted
  */
 public data class ChannelDeletedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val channel: Channel,
+    override val channelLastMessageAt: Date?,
     val user: User?,
 ) : CidEvent(), HasChannel
 
@@ -109,10 +139,12 @@ public data class ChannelDeletedEvent(
 public data class ChannelHiddenEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val user: User,
+    override val channelLastMessageAt: Date?,
     val clearHistory: Boolean,
 ) : CidEvent(), UserEvent
 
@@ -122,12 +154,14 @@ public data class ChannelHiddenEvent(
 public data class ChannelTruncatedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
+    override val channel: Channel,
+    override val channelLastMessageAt: Date?,
     val user: User?,
     val message: Message?,
-    override val channel: Channel,
 ) : CidEvent(), HasChannel
 
 /**
@@ -136,11 +170,13 @@ public data class ChannelTruncatedEvent(
 public data class ChannelUpdatedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
-    val message: Message?,
     override val channel: Channel,
+    override val channelLastMessageAt: Date?,
+    val message: Message?,
 ) : CidEvent(), HasChannel
 
 /**
@@ -149,12 +185,14 @@ public data class ChannelUpdatedEvent(
 public data class ChannelUpdatedByUserEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val user: User,
-    val message: Message?,
     override val channel: Channel,
+    override val channelLastMessageAt: Date?,
+    val message: Message?,
 ) : CidEvent(), UserEvent, HasChannel
 
 /**
@@ -163,10 +201,12 @@ public data class ChannelUpdatedByUserEvent(
 public data class ChannelVisibleEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val user: User,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), UserEvent
 
 /**
@@ -175,6 +215,7 @@ public data class ChannelVisibleEvent(
 public data class HealthEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     val connectionId: String,
 ) : ChatEvent()
 
@@ -184,11 +225,13 @@ public data class HealthEvent(
 public data class MemberAddedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val user: User,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val member: Member,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), UserEvent, HasMember
 
 /**
@@ -197,11 +240,13 @@ public data class MemberAddedEvent(
 public data class MemberRemovedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val user: User,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val member: Member,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), UserEvent, HasMember
 
 /**
@@ -210,11 +255,13 @@ public data class MemberRemovedEvent(
 public data class MemberUpdatedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val user: User,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val member: Member,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), UserEvent, HasMember
 
 /**
@@ -223,11 +270,13 @@ public data class MemberUpdatedEvent(
 public data class MessageDeletedEvent(
     override val type: String,
     override val createdAt: Date,
-    val user: User?,
+    override val rawCreatedAt: String,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val message: Message,
+    override val channelLastMessageAt: Date?,
+    val user: User?,
     val hardDelete: Boolean,
 ) : CidEvent(), HasMessage
 
@@ -237,10 +286,13 @@ public data class MessageDeletedEvent(
 public data class MessageReadEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val user: User,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
+    override val channelLastMessageAt: Date?,
+    val thread: ThreadInfo? = null,
 ) : CidEvent(), UserEvent
 
 /**
@@ -249,11 +301,13 @@ public data class MessageReadEvent(
 public data class MessageUpdatedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val user: User,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val message: Message,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), UserEvent, HasMessage
 
 /**
@@ -262,6 +316,7 @@ public data class MessageUpdatedEvent(
 public data class NewMessageEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val user: User,
     override val cid: String,
     override val channelType: String,
@@ -270,6 +325,7 @@ public data class NewMessageEvent(
     override val watcherCount: Int = 0,
     override val totalUnreadCount: Int = 0,
     override val unreadChannels: Int = 0,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), UserEvent, HasMessage, HasWatcherCount, HasUnreadCounts
 
 /**
@@ -278,6 +334,7 @@ public data class NewMessageEvent(
 public data class NotificationAddedToChannelEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
@@ -285,6 +342,7 @@ public data class NotificationAddedToChannelEvent(
     override val member: Member,
     override val totalUnreadCount: Int = 0,
     override val unreadChannels: Int = 0,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), HasChannel, HasMember, HasUnreadCounts
 
 /**
@@ -293,12 +351,14 @@ public data class NotificationAddedToChannelEvent(
 public data class NotificationChannelDeletedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val channel: Channel,
     override val totalUnreadCount: Int = 0,
     override val unreadChannels: Int = 0,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), HasChannel, HasUnreadCounts
 
 /**
@@ -307,6 +367,7 @@ public data class NotificationChannelDeletedEvent(
 public data class NotificationChannelMutesUpdatedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val me: User,
 ) : ChatEvent(), HasOwnUser
 
@@ -316,12 +377,14 @@ public data class NotificationChannelMutesUpdatedEvent(
 public data class NotificationChannelTruncatedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val channel: Channel,
     override val totalUnreadCount: Int = 0,
     override val unreadChannels: Int = 0,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), HasChannel, HasUnreadCounts
 
 /**
@@ -330,12 +393,14 @@ public data class NotificationChannelTruncatedEvent(
 public data class NotificationInviteAcceptedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val user: User,
     override val member: Member,
     override val channel: Channel,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), UserEvent, HasMember, HasChannel
 
 /**
@@ -344,12 +409,14 @@ public data class NotificationInviteAcceptedEvent(
 public data class NotificationInviteRejectedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val user: User,
     override val member: Member,
     override val channel: Channel,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), UserEvent, HasMember, HasChannel
 
 /**
@@ -358,11 +425,13 @@ public data class NotificationInviteRejectedEvent(
 public data class NotificationInvitedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val user: User,
     override val member: Member,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), UserEvent, HasMember
 
 /**
@@ -371,13 +440,42 @@ public data class NotificationInvitedEvent(
 public data class NotificationMarkReadEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val user: User,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val totalUnreadCount: Int = 0,
     override val unreadChannels: Int = 0,
-) : CidEvent(), UserEvent, HasUnreadCounts
+    override val channelLastMessageAt: Date?,
+    val threadId: String? = null,
+    val thread: ThreadInfo? = null,
+    override val unreadThreads: Int? = null,
+    override val unreadThreadMessages: Int? = null,
+) : CidEvent(), UserEvent, HasUnreadCounts, HasUnreadThreadCounts
+
+/**
+ * Triggered when the the user mark as unread a conversation from a particular message
+ */
+public data class NotificationMarkUnreadEvent(
+    override val type: String,
+    override val createdAt: Date,
+    override val rawCreatedAt: String,
+    override val user: User,
+    override val cid: String,
+    override val channelType: String,
+    override val channelId: String,
+    override val totalUnreadCount: Int = 0,
+    override val unreadChannels: Int = 0,
+    override val channelLastMessageAt: Date?,
+    val unreadMessages: Int,
+    val firstUnreadMessageId: String,
+    val lastReadMessageAt: Date,
+    val lastReadMessageId: String?,
+    val threadId: String? = null,
+    override val unreadThreads: Int = 0,
+    override val unreadThreadMessages: Int? = null,
+) : CidEvent(), UserEvent, HasUnreadCounts, HasUnreadThreadCounts
 
 /**
  * Triggered when the total count of unread messages (across all channels the user is a member) changes
@@ -385,6 +483,7 @@ public data class NotificationMarkReadEvent(
 public data class MarkAllReadEvent(
     override val type: String = "",
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val user: User,
     override val totalUnreadCount: Int = 0,
     override val unreadChannels: Int = 0,
@@ -396,6 +495,7 @@ public data class MarkAllReadEvent(
 public data class NotificationMessageNewEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
@@ -403,7 +503,25 @@ public data class NotificationMessageNewEvent(
     override val message: Message,
     override val totalUnreadCount: Int = 0,
     override val unreadChannels: Int = 0,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), HasChannel, HasMessage, HasUnreadCounts
+
+/**
+ * Triggered when a message is added to a channel as a thread reply.
+ */
+public data class NotificationThreadMessageNewEvent(
+    override val type: String,
+    override val cid: String,
+    override val channelId: String,
+    override val channelType: String,
+    override val message: Message,
+    override val channel: Channel,
+    override val createdAt: Date,
+    override val rawCreatedAt: String?,
+    override val unreadThreads: Int,
+    override val unreadThreadMessages: Int,
+    override val channelLastMessageAt: Date?,
+) : CidEvent(), HasMessage, HasChannel, HasUnreadThreadCounts
 
 /**
  * Triggered when the user mutes are updated
@@ -411,6 +529,7 @@ public data class NotificationMessageNewEvent(
 public data class NotificationMutesUpdatedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val me: User,
 ) : ChatEvent(), HasOwnUser
 
@@ -420,12 +539,14 @@ public data class NotificationMutesUpdatedEvent(
 public data class NotificationRemovedFromChannelEvent(
     override val type: String,
     override val createdAt: Date,
-    val user: User?,
+    override val rawCreatedAt: String,
+    override val channelLastMessageAt: Date?,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val channel: Channel,
     override val member: Member,
+    val user: User?,
 ) : CidEvent(), HasMember, HasChannel
 
 /**
@@ -434,12 +555,14 @@ public data class NotificationRemovedFromChannelEvent(
 public data class ReactionDeletedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val user: User,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val message: Message,
     override val reaction: Reaction,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), UserEvent, HasMessage, HasReaction
 
 /**
@@ -448,12 +571,14 @@ public data class ReactionDeletedEvent(
 public data class ReactionNewEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val user: User,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val message: Message,
     override val reaction: Reaction,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), UserEvent, HasMessage, HasReaction
 
 /**
@@ -462,12 +587,14 @@ public data class ReactionNewEvent(
 public data class ReactionUpdateEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val user: User,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val message: Message,
     override val reaction: Reaction,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), UserEvent, HasMessage, HasReaction
 
 /**
@@ -476,10 +603,12 @@ public data class ReactionUpdateEvent(
 public data class TypingStartEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val user: User,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
+    override val channelLastMessageAt: Date?,
     val parentId: String?,
 ) : CidEvent(), UserEvent
 
@@ -489,10 +618,12 @@ public data class TypingStartEvent(
 public data class TypingStopEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val user: User,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
+    override val channelLastMessageAt: Date?,
     val parentId: String?,
 ) : CidEvent(), UserEvent
 
@@ -502,11 +633,14 @@ public data class TypingStopEvent(
 public data class ChannelUserBannedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
     override val user: User,
+    override val channelLastMessageAt: Date?,
     val expiration: Date?,
+    val shadow: Boolean,
 ) : CidEvent(), UserEvent
 
 /**
@@ -516,11 +650,13 @@ public data class GlobalUserBannedEvent(
     override val type: String,
     override val user: User,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
 ) : ChatEvent(), UserEvent
 
 public data class UserDeletedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val user: User,
 ) : ChatEvent(), UserEvent
 
@@ -530,6 +666,7 @@ public data class UserDeletedEvent(
 public data class UserPresenceChangedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val user: User,
 ) : ChatEvent(), UserEvent
 
@@ -539,11 +676,13 @@ public data class UserPresenceChangedEvent(
 public data class UserStartWatchingEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val cid: String,
     override val watcherCount: Int = 0,
     override val channelType: String,
     override val channelId: String,
     override val user: User,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), UserEvent, HasWatcherCount
 
 /**
@@ -552,11 +691,13 @@ public data class UserStartWatchingEvent(
 public data class UserStopWatchingEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val cid: String,
     override val watcherCount: Int = 0,
     override val channelType: String,
     override val channelId: String,
     override val user: User,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), UserEvent, HasWatcherCount
 
 /**
@@ -565,10 +706,12 @@ public data class UserStopWatchingEvent(
 public data class ChannelUserUnbannedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val user: User,
     override val cid: String,
     override val channelType: String,
     override val channelId: String,
+    override val channelLastMessageAt: Date?,
 ) : CidEvent(), UserEvent
 
 /**
@@ -577,6 +720,7 @@ public data class ChannelUserUnbannedEvent(
 public data class GlobalUserUnbannedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val user: User,
 ) : ChatEvent(), UserEvent
 
@@ -586,8 +730,155 @@ public data class GlobalUserUnbannedEvent(
 public data class UserUpdatedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val user: User,
 ) : ChatEvent(), UserEvent
+
+/**
+ * Triggered when a poll is updated.
+ */
+public data class PollUpdatedEvent(
+    override val type: String,
+    override val createdAt: Date,
+    override val rawCreatedAt: String?,
+    override val cid: String,
+    override val channelType: String,
+    override val channelId: String,
+    override val poll: Poll,
+    override val channelLastMessageAt: Date?,
+) : CidEvent(), HasPoll
+
+/**
+ * Triggered when a poll is deleted.
+ */
+public data class PollDeletedEvent(
+    override val type: String,
+    override val createdAt: Date,
+    override val rawCreatedAt: String?,
+    override val cid: String,
+    override val channelType: String,
+    override val channelId: String,
+    override val poll: Poll,
+    override val channelLastMessageAt: Date?,
+) : CidEvent(), HasPoll
+
+/**
+ * Triggered when a poll is closed.
+ */
+public data class PollClosedEvent(
+    override val type: String,
+    override val createdAt: Date,
+    override val rawCreatedAt: String?,
+    override val cid: String,
+    override val channelType: String,
+    override val channelId: String,
+    override val poll: Poll,
+    override val channelLastMessageAt: Date?,
+) : CidEvent(), HasPoll
+
+/**
+ * Triggered when a vote is casted.
+ */
+public data class VoteCastedEvent(
+    override val type: String,
+    override val createdAt: Date,
+    override val rawCreatedAt: String?,
+    override val cid: String,
+    override val channelType: String,
+    override val channelId: String,
+    override val poll: Poll,
+    override val channelLastMessageAt: Date?,
+    val newVote: Vote,
+) : CidEvent(), HasPoll
+
+/**
+ * Triggered when a vote is casted.
+ */
+public data class AnswerCastedEvent(
+    override val type: String,
+    override val createdAt: Date,
+    override val rawCreatedAt: String?,
+    override val cid: String,
+    override val channelType: String,
+    override val channelId: String,
+    override val poll: Poll,
+    override val channelLastMessageAt: Date?,
+    val newAnswer: Answer,
+) : CidEvent(), HasPoll
+
+/**
+ * Triggered when a vote is changed.
+ */
+public data class VoteChangedEvent(
+    override val type: String,
+    override val createdAt: Date,
+    override val rawCreatedAt: String?,
+    override val cid: String,
+    override val channelType: String,
+    override val channelId: String,
+    override val poll: Poll,
+    override val channelLastMessageAt: Date?,
+    val newVote: Vote,
+) : CidEvent(), HasPoll
+
+/**
+ * Triggered when a vote is removed.
+ */
+public data class VoteRemovedEvent(
+    override val type: String,
+    override val createdAt: Date,
+    override val rawCreatedAt: String?,
+    override val cid: String,
+    override val channelType: String,
+    override val channelId: String,
+    override val poll: Poll,
+    override val channelLastMessageAt: Date?,
+    val removedVote: Vote,
+) : CidEvent(), HasPoll
+
+/**
+ * Triggered when an ai indicator is updated.
+ */
+public data class AIIndicatorUpdatedEvent(
+    override val type: String,
+    override val createdAt: Date,
+    override val rawCreatedAt: String?,
+    override val user: User,
+    override val cid: String,
+    override val channelType: String,
+    override val channelId: String,
+    override val channelLastMessageAt: Date?,
+    val aiState: String,
+    val messageId: String,
+) : CidEvent(), UserEvent
+
+/**
+ * Triggered when an ai indicator is cleared.
+ */
+public data class AIIndicatorClearEvent(
+    override val type: String,
+    override val createdAt: Date,
+    override val rawCreatedAt: String?,
+    override val user: User,
+    override val cid: String,
+    override val channelType: String,
+    override val channelId: String,
+    override val channelLastMessageAt: Date?,
+) : CidEvent(), UserEvent
+
+/**
+ * Triggered when an ai indicator is stopped.
+ */
+public data class AIIndicatorStopEvent(
+    override val type: String,
+    override val createdAt: Date,
+    override val rawCreatedAt: String?,
+    override val user: User,
+    override val cid: String,
+    override val channelType: String,
+    override val channelId: String,
+    override val channelLastMessageAt: Date?,
+) : CidEvent(), UserEvent
 
 /**
  * Triggered when a user gets connected to the WS
@@ -595,9 +886,21 @@ public data class UserUpdatedEvent(
 public data class ConnectedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     override val me: User,
     val connectionId: String,
 ) : ChatEvent(), HasOwnUser
+
+/**
+ * Triggered when a WS connection fails.
+ */
+public data class ConnectionErrorEvent(
+    override val type: String,
+    override val createdAt: Date,
+    override val rawCreatedAt: String,
+    val connectionId: String,
+    val error: ChatError,
+) : ChatEvent()
 
 /**
  * Triggered when a user is connecting to the WS
@@ -605,6 +908,7 @@ public data class ConnectedEvent(
 public data class ConnectingEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String?,
 ) : ChatEvent()
 
 /**
@@ -613,6 +917,7 @@ public data class ConnectingEvent(
 public data class DisconnectedEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String?,
     val disconnectCause: DisconnectCause = DisconnectCause.NetworkNotAvailable,
 ) : ChatEvent()
 
@@ -622,7 +927,8 @@ public data class DisconnectedEvent(
 public data class ErrorEvent(
     override val type: String,
     override val createdAt: Date,
-    val error: ChatError,
+    override val rawCreatedAt: String?,
+    val error: Error,
 ) : ChatEvent()
 
 /**
@@ -631,6 +937,7 @@ public data class ErrorEvent(
 public data class UnknownEvent(
     override val type: String,
     override val createdAt: Date,
+    override val rawCreatedAt: String,
     val user: User?,
     val rawData: Map<*, *>,
 ) : ChatEvent()

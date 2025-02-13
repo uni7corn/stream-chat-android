@@ -34,10 +34,10 @@ import androidx.navigation.ui.setupWithNavController
 import io.getstream.chat.android.client.plugins.requests.ApiRequestsAnalyser
 import io.getstream.chat.android.client.utils.internal.toggle.dialog.ToggleDialogFragment
 import io.getstream.chat.android.core.internal.InternalStreamChatApi
-import io.getstream.chat.android.livedata.utils.EventObserver
-import io.getstream.chat.android.ui.avatar.AvatarView
-import io.getstream.chat.android.ui.channel.list.header.viewmodel.ChannelListHeaderViewModel
-import io.getstream.chat.android.ui.channel.list.header.viewmodel.bindView
+import io.getstream.chat.android.state.utils.EventObserver
+import io.getstream.chat.android.ui.viewmodel.channels.ChannelListHeaderViewModel
+import io.getstream.chat.android.ui.viewmodel.channels.bindView
+import io.getstream.chat.android.ui.widgets.avatar.UserAvatarView
 import io.getstream.chat.ui.sample.BuildConfig
 import io.getstream.chat.ui.sample.R
 import io.getstream.chat.ui.sample.common.navigateSafely
@@ -46,16 +46,18 @@ import io.getstream.chat.ui.sample.databinding.FragmentHomeBinding
 import io.getstream.chat.ui.sample.feature.EXTRA_CHANNEL_ID
 import io.getstream.chat.ui.sample.feature.EXTRA_CHANNEL_TYPE
 import io.getstream.chat.ui.sample.feature.EXTRA_MESSAGE_ID
+import io.getstream.chat.ui.sample.feature.EXTRA_PARENT_MESSAGE_ID
+import io.getstream.chat.ui.sample.feature.userlogin.UserLoginViewModel
 import io.getstream.chat.ui.sample.util.extensions.useAdjustNothing
 
 class HomeFragment : Fragment() {
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
-    private val homeViewModel: HomeFragmentViewModel by viewModels()
+    private val homeViewModel: HomeViewModel by viewModels()
     private val channelListHeaderViewModel: ChannelListHeaderViewModel by viewModels()
 
-    private lateinit var avatarView: AvatarView
+    private lateinit var userAvatarView: UserAvatarView
     private lateinit var nameTextView: TextView
 
     override fun onCreateView(
@@ -76,9 +78,7 @@ class HomeFragment : Fragment() {
         homeViewModel.state.observe(viewLifecycleOwner, ::renderState)
         homeViewModel.events.observe(
             viewLifecycleOwner,
-            EventObserver {
-                navigateSafely(R.id.action_to_userLoginFragment)
-            }
+            EventObserver(::handleHomeEvents),
         )
         binding.channelListHeaderView.apply {
             channelListHeaderViewModel.bindView(this, viewLifecycleOwner)
@@ -96,7 +96,7 @@ class HomeFragment : Fragment() {
                         Toast.makeText(
                             requireContext(),
                             "ApiRequestsAnalyser dumped all requests",
-                            Toast.LENGTH_SHORT
+                            Toast.LENGTH_SHORT,
                         ).show()
                     }
                 }
@@ -121,6 +121,27 @@ class HomeFragment : Fragment() {
         }
     }
 
+    private fun handleHomeEvents(uiEvent: HomeViewModel.UiEvent) {
+        when (uiEvent) {
+            HomeViewModel.UiEvent.NavigateToLoginScreenLogout -> {
+                navigateSafely(
+                    R.id.action_to_userLoginFragment,
+                    Bundle().apply {
+                        this.putBoolean(UserLoginViewModel.EXTRA_SWITCH_USER, false)
+                    },
+                )
+            }
+            HomeViewModel.UiEvent.NavigateToLoginScreenSwitchUser -> {
+                navigateSafely(
+                    R.id.action_to_userLoginFragment,
+                    Bundle().apply {
+                        this.putBoolean(UserLoginViewModel.EXTRA_SWITCH_USER, true)
+                    },
+                )
+            }
+        }
+    }
+
     private fun parseNotificationData() {
         requireActivity().intent?.let {
             if (it.hasExtra(EXTRA_CHANNEL_ID) && it.hasExtra(EXTRA_MESSAGE_ID) && it.hasExtra(EXTRA_CHANNEL_TYPE)) {
@@ -128,10 +149,13 @@ class HomeFragment : Fragment() {
                 val channelId = it.getStringExtra(EXTRA_CHANNEL_ID)
                 val cid = "$channelType:$channelId"
                 val messageId = it.getStringExtra(EXTRA_MESSAGE_ID)
+                val parentMessageId = it.getStringExtra(EXTRA_PARENT_MESSAGE_ID)
 
                 requireActivity().intent = null
 
-                findNavController().navigateSafely(HomeFragmentDirections.actionOpenChat(cid, messageId))
+                findNavController().navigateSafely(
+                    HomeFragmentDirections.actionOpenChat(cid, messageId, parentMessageId),
+                )
             }
         }
     }
@@ -162,18 +186,22 @@ class HomeFragment : Fragment() {
                 backgroundColor = ContextCompat.getColor(requireContext(), R.color.stream_ui_accent_red)
                 badgeTextColor = ContextCompat.getColor(requireContext(), R.color.stream_ui_literal_white)
             }
+            getOrCreateBadge(R.id.threads_fragment).apply {
+                backgroundColor = ContextCompat.getColor(requireContext(), R.color.stream_ui_accent_red)
+                badgeTextColor = ContextCompat.getColor(requireContext(), R.color.stream_ui_literal_white)
+            }
         }
     }
 
     private fun setupNavigationDrawer() {
         AppBarConfiguration(
             setOf(R.id.directChatFragment, R.id.groupChatFragment),
-            binding.drawerLayout
+            binding.drawerLayout,
         )
         binding.navigationView.setupWithNavController(findNavController())
 
         val header = binding.navigationView.getHeaderView(0)
-        avatarView = header.findViewById(R.id.avatarView)
+        userAvatarView = header.findViewById(R.id.userAvatarView)
         nameTextView = header.findViewById(R.id.nameTextView)
 
         binding.navigationView.setNavigationItemSelectedListener { item ->
@@ -192,19 +220,23 @@ class HomeFragment : Fragment() {
             }
         }
 
+        binding.switchUserTextView.setOnClickListener {
+            homeViewModel.onUiAction(HomeViewModel.UiAction.SwitchUserClicked)
+        }
         binding.signOutTextView.setOnClickListener {
-            homeViewModel.onUiAction(HomeFragmentViewModel.UiAction.LogoutClicked)
+            homeViewModel.onUiAction(HomeViewModel.UiAction.LogoutClicked)
         }
         binding.versionName.text = BuildConfig.VERSION_NAME
     }
 
-    private fun renderState(state: HomeFragmentViewModel.State) {
+    private fun renderState(state: HomeViewModel.UiState) {
         binding.bottomNavigationView.apply {
             setBadgeNumber(R.id.channels_fragment, state.totalUnreadCount)
             setBadgeNumber(R.id.mentions_fragment, state.mentionsUnreadCount)
+            setBadgeNumber(R.id.threads_fragment, state.unreadThreadsCount)
         }
 
         nameTextView.text = state.user.name
-        avatarView.setUserData(state.user)
+        userAvatarView.setUser(state.user)
     }
 }

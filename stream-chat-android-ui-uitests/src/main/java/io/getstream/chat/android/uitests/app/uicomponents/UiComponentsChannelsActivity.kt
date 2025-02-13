@@ -19,8 +19,8 @@ package io.getstream.chat.android.uitests.app.uicomponents
 import android.content.Context
 import android.content.Intent
 import io.getstream.chat.android.client.ChatClient
-import io.getstream.chat.android.ui.channel.ChannelListActivity
-import io.getstream.chat.android.ui.channel.ChannelListFragment
+import io.getstream.chat.android.ui.feature.channels.ChannelListActivity
+import io.getstream.chat.android.ui.feature.channels.ChannelListFragment
 import io.getstream.chat.android.uitests.app.login.LoginActivity
 
 class UiComponentsChannelsActivity : ChannelListActivity(), ChannelListFragment.HeaderUserAvatarClickListener {
@@ -29,11 +29,11 @@ class UiComponentsChannelsActivity : ChannelListActivity(), ChannelListFragment.
      * Logs out and navigated to the login screen.
      */
     override fun onUserAvatarClick() {
-        ChatClient.instance().disconnect()
-
-        finish()
-        startActivity(LoginActivity.createIntent(this))
-        overridePendingTransition(0, 0)
+        ChatClient.instance().disconnect(flushPersistence = false).enqueue {
+            finish()
+            startActivity(LoginActivity.createIntent(this))
+            overridePendingTransition(0, 0)
+        }
     }
 
     companion object {

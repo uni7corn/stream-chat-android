@@ -1,36 +1,40 @@
 package io.getstream.chat.docs.java.client.cms;
 
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
+import static io.getstream.chat.android.client.api.models.Pagination.LESS_THAN;
+
 import android.os.Handler;
 import android.os.Looper;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import io.getstream.chat.android.client.ChatClient;
-import io.getstream.chat.android.client.api.models.FilterObject;
-import io.getstream.chat.android.client.api.models.NeutralFilterObject;
+import io.getstream.chat.android.models.FilterObject;
+import io.getstream.chat.android.models.NeutralFilterObject;
 import io.getstream.chat.android.client.api.models.QueryChannelRequest;
 import io.getstream.chat.android.client.api.models.QueryChannelsRequest;
-import io.getstream.chat.android.client.api.models.QuerySort;
+import io.getstream.chat.android.models.querysort.QuerySortByField;
+import io.getstream.chat.android.models.querysort.QuerySorter;
 import io.getstream.chat.android.client.channel.ChannelClient;
 import io.getstream.chat.android.client.events.NotificationChannelMutesUpdatedEvent;
 import io.getstream.chat.android.client.events.UserStartWatchingEvent;
 import io.getstream.chat.android.client.events.UserStopWatchingEvent;
 import io.getstream.chat.android.client.extensions.ChannelExtensionKt;
-import io.getstream.chat.android.client.models.Channel;
-import io.getstream.chat.android.client.models.ChannelMute;
-import io.getstream.chat.android.client.models.Filters;
-import io.getstream.chat.android.client.models.Member;
-import io.getstream.chat.android.client.models.Message;
-import io.getstream.chat.android.client.models.User;
-
-import static io.getstream.chat.android.client.api.models.Pagination.LESS_THAN;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.emptyMap;
+import io.getstream.chat.android.models.Channel;
+import io.getstream.chat.android.models.ChannelCapabilities;
+import io.getstream.chat.android.models.ChannelMute;
+import io.getstream.chat.android.models.Filters;
+import io.getstream.chat.android.models.Member;
+import io.getstream.chat.android.models.Message;
+import io.getstream.chat.android.models.User;
 
 public class Channels {
     private ChatClient client;
@@ -49,9 +53,9 @@ public class Channels {
             channelClient.create(memberIds, extraData)
                     .enqueue(result -> {
                         if (result.isSuccess()) {
-                            Channel newChannel = result.data();
+                            Channel newChannel = result.getOrNull();
                         } else {
-                            // Handle result.error()
+                            // Handle error
                         }
                     });
         }
@@ -70,9 +74,9 @@ public class Channels {
             channelClient.create(memberIds, extraData)
                     .enqueue(result -> {
                         if (result.isSuccess()) {
-                            Channel newChannel = result.data();
+                            Channel newChannel = result.getOrNull();
                         } else {
-                            // Handle result.error()
+                            // Handle error
                         }
                     });
         }
@@ -87,9 +91,9 @@ public class Channels {
 
             channelClient.watch().enqueue(result -> {
                 if (result.isSuccess()) {
-                    Channel channel = result.data();
+                    Channel channel = result.getOrNull();
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
         }
@@ -97,11 +101,11 @@ public class Channels {
         public void watchingMultipleChannels(String currentUserId) {
             FilterObject filter = Filters.and(
                     Filters.eq("type", "messaging"),
-                    Filters.in("members", Arrays.asList(currentUserId))
+                    Filters.in("members", Collections.singletonList(currentUserId))
             );
             int offset = 0;
             int limit = 10;
-            QuerySort<Channel> sort = new QuerySort<Channel>().desc("last_message_at");
+            QuerySortByField<Channel> sort = QuerySortByField.descByName("lastMessageAt");
             int messageLimit = 0;
             int memberLimit = 0;
 
@@ -112,9 +116,9 @@ public class Channels {
             // Run query on ChatClient
             client.queryChannels(request).enqueue((result) -> {
                 if (result.isSuccess()) {
-                    List<Channel> channels = result.data();
+                    List<Channel> channels = result.getOrNull();
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
         }
@@ -127,7 +131,7 @@ public class Channels {
                 if (result.isSuccess()) {
                     // Channel unwatched
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
         }
@@ -136,10 +140,10 @@ public class Channels {
             QueryChannelRequest request = new QueryChannelRequest().withState();
             channelClient.query(request).enqueue((result) -> {
                 if (result.isSuccess()) {
-                    Channel channel = result.data();
+                    Channel channel = result.getOrNull();
                     channel.getWatcherCount();
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
         }
@@ -150,10 +154,10 @@ public class Channels {
             QueryChannelRequest request = new QueryChannelRequest().withWatchers(limit, offset);
             channelClient.query(request).enqueue((result) -> {
                 if (result.isSuccess()) {
-                    Channel channel = result.data();
+                    Channel channel = result.getOrNull();
                     List<User> watchers = channel.getWatchers();
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
         }
@@ -237,14 +241,14 @@ public class Channels {
             Map<String, Object> channelData = new HashMap<>();
             channelData.put("name", "myspecialchannel");
             channelData.put("color", "green");
-            Message updateMessage = new Message();
-            updateMessage.setText("Thierry changed the channel color to green");
-
+            Message updateMessage = new Message.Builder()
+                    .withText("Thierry changed the channel color to green")
+                    .build();
             channelClient.update(updateMessage, channelData).enqueue(result -> {
                 if (result.isSuccess()) {
-                    Channel channel = result.data();
+                    Channel channel = result.getOrNull();
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
         }
@@ -262,20 +266,20 @@ public class Channels {
             ChannelClient channelClient = client.channel("messaging", "general");
 
             // Add members with ids "thierry" and "josh"
-            channelClient.addMembers(Arrays.asList("thierry", "josh"), null).enqueue(result -> {
+            channelClient.addMembers(Arrays.asList("thierry", "josh"), null, false, false).enqueue(result -> {
                 if (result.isSuccess()) {
-                    Channel channel = result.data();
+                    Channel channel = result.getOrNull();
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
 
             // Remove member with id "tommaso"
-            channelClient.removeMembers(Arrays.asList("tommaso"), null).enqueue(result -> {
+            channelClient.removeMembers(Collections.singletonList("tommaso"), null, false).enqueue(result -> {
                 if (result.isSuccess()) {
-                    Channel channel = result.data();
+                    Channel channel = result.getOrNull();
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
         }
@@ -286,25 +290,27 @@ public class Channels {
         public void messageParameter() {
             ChannelClient channelClient = client.channel("messaging", "general");
 
-            Message addMemberSystemMessage = new Message();
-            addMemberSystemMessage.setText("Thierry and Josh were added to this channel");
+            Message addMemberSystemMessage = new Message.Builder()
+                    .withText("Thierry and Josh were added to this channel")
+                    .build();
             // Add members with ids "thierry" and "josh"
-            channelClient.addMembers(Arrays.asList("thierry", "josh"), addMemberSystemMessage).enqueue(result -> {
+            channelClient.addMembers(Arrays.asList("thierry", "josh"), addMemberSystemMessage, false, false).enqueue(result -> {
                 if (result.isSuccess()) {
-                    Channel channel = result.data();
+                    Channel channel = result.getOrNull();
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
 
-            Message removeMemberSystemMessage = new Message();
-            addMemberSystemMessage.setText("Tommaso was removed from this channel");
+            Message removeMemberSystemMessage = new Message.Builder()
+                    .withText("Tommaso was removed from this channel")
+                    .build();
             // Remove member with id "tommaso"
-            channelClient.removeMembers(Arrays.asList("tommaso"), removeMemberSystemMessage).enqueue(result -> {
+            channelClient.removeMembers(Collections.singletonList("tommaso"), removeMemberSystemMessage, false).enqueue(result -> {
                 if (result.isSuccess()) {
-                    Channel channel = result.data();
+                    Channel channel = result.getOrNull();
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
         }
@@ -317,11 +323,11 @@ public class Channels {
         public void queryChannels() {
             FilterObject filter = Filters.and(
                     Filters.eq("type", "messaging"),
-                    Filters.in("members", Arrays.asList("thierry"))
+                    Filters.in("members", Collections.singletonList("thierry"))
             );
             int offset = 0;
             int limit = 10;
-            QuerySort<Channel> sort = new QuerySort<Channel>().desc("last_message_at");
+            QuerySortByField<Channel> sort = QuerySortByField.descByName("lastMessageAt");
             int messageLimit = 0;
             int memberLimit = 0;
 
@@ -331,9 +337,9 @@ public class Channels {
 
             client.queryChannels(request).enqueue(result -> {
                 if (result.isSuccess()) {
-                    List<Channel> channels = result.data();
+                    List<Channel> channels = result.getOrNull();
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
         }
@@ -343,7 +349,7 @@ public class Channels {
          */
         class CommonFilters {
             public void channelsThatContainsSpecificUser() {
-                FilterObject filter = Filters.in("members", Arrays.asList("thierry"));
+                FilterObject filter = Filters.in("members", Collections.singletonList("thierry"));
             }
 
             public void channelsThatWithSpecificStatus(User user) {
@@ -362,16 +368,16 @@ public class Channels {
             FilterObject filter = Filters.in("members", "thierry");
             int offset = 0;
             int limit = 10;
-            QuerySort<Channel> sort = new QuerySort<>();
+            QuerySorter<Channel> sort = new QuerySortByField<>();
             int messageLimit = 0;
             int memberLimit = 0;
             QueryChannelsRequest request = new QueryChannelsRequest(filter, offset, limit, sort, messageLimit, memberLimit);
 
             client.queryChannels(request).enqueue(result -> {
                 if (result.isSuccess()) {
-                    List<Channel> channels = result.data();
+                    List<Channel> channels = result.getOrNull();
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
 
@@ -380,9 +386,9 @@ public class Channels {
             QueryChannelsRequest nextRequest = new QueryChannelsRequest(filter, nextOffset, limit, sort, messageLimit, memberLimit);
             client.queryChannels(nextRequest).enqueue(result -> {
                 if (result.isSuccess()) {
-                    List<Channel> channels = result.data();
+                    List<Channel> channels = result.getOrNull();
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
         }
@@ -392,12 +398,40 @@ public class Channels {
      * @see <a href="https://getstream.io/chat/docs/query_members/?language=java">Querying Members</a>
      */
     class QueryingMembers {
+
+        public void paginationAndOrdering() {
+            ChannelClient channelClient = client.channel("messaging", "general");
+            int offset = 0;
+            int limit = 10;
+            FilterObject filterByName = Filters.neutral();
+
+            // paginate by user_id in descending order
+            QuerySorter<Member> sort = QuerySortByField.descByName("userId");
+            channelClient.queryMembers(offset, limit, filterByName, sort, emptyList()).enqueue(result -> {
+                if (result.isSuccess()) {
+                    List<Member> members = result.getOrNull();
+                } else {
+                    // Handle error
+                }
+            });
+
+            // paginate by created at in ascending order
+            QuerySorter<Member> createdAtSort = QuerySortByField.ascByName("createdAt");
+            channelClient.queryMembers(offset, limit, filterByName, createdAtSort, emptyList()).enqueue(result -> {
+                if (result.isSuccess()) {
+                    List<Member> members = result.getOrNull();
+                } else {
+                    // Handle error
+                }
+            });
+        }
+
         public void queryingMembers() {
             ChannelClient channelClient = client.channel("messaging", "general");
 
             int offset = 0; // Use this value for pagination
             int limit = 10;
-            QuerySort<Member> sort = new QuerySort<>();
+            QuerySortByField<Member> sort = new QuerySortByField<>();
 
             // Channel members can be queried with various filters
             // 1. Create the filter, e.g query members by user name
@@ -405,9 +439,9 @@ public class Channels {
             // 2. Call queryMembers with that filter
             channelClient.queryMembers(offset, limit, filterByName, sort, emptyList()).enqueue(result -> {
                 if (result.isSuccess()) {
-                    List<Member> members = result.data();
+                    List<Member> members = result.getOrNull();
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
 
@@ -434,9 +468,9 @@ public class Channels {
             // Query all the members
             FilterObject filterByNone = NeutralFilterObject.INSTANCE;
 
-            // We can order the results too with QuerySort param
+            // We can order the results too with QuerySortByField param
             // Here example to order results by member created at descending
-            QuerySort<Member> createdAtDescendingSort = new QuerySort<Member>().desc("created_at");
+            QuerySortByField<Member> createdAtDescendingSort = QuerySortByField.descByName("createdAt");
         }
     }
 
@@ -455,7 +489,7 @@ public class Channels {
 
             channelClient.query(request).enqueue(result -> {
                 if (result.isSuccess()) {
-                    List<Message> messages = result.data().getMessages();
+                    List<Message> messages = result.getOrNull().getMessages();
                     if (messages.size() < pageSize) {
                         // All messages loaded
                     } else {
@@ -466,7 +500,28 @@ public class Channels {
                         // ...
                     }
                 } else {
-                    // Handle result.error()
+                    // Handle error
+                }
+            });
+        }
+    }
+
+    /**
+     * @see <a href="https://getstream.io/chat/docs/android/channel_capabilities/?language=java">Capabilities</a>
+     */
+    class Capabilities {
+        public void frontendCapabilities() {
+            ChannelClient channelClient = client.channel("messaging", "general");
+
+            channelClient.query(new QueryChannelRequest()).enqueue(result -> {
+                if (result.isSuccess()) {
+                    Channel channel = result.getOrNull();
+
+                    Set<String> capabilities = channel.getOwnCapabilities();
+                    boolean userCanDeleteOwnMessage = capabilities.contains(ChannelCapabilities.DELETE_OWN_MESSAGE);
+                    boolean userCanUpdateAnyMessage = capabilities.contains(ChannelCapabilities.UPDATE_ANY_MESSAGE);
+                } else {
+                    // Handle error
                 }
             });
         }
@@ -489,7 +544,24 @@ public class Channels {
 
             channelClient.create(memberIds, data).enqueue(result -> {
                 if (result.isSuccess()) {
-                    Channel channel = result.data();
+                    Channel channel = result.getOrNull();
+                } else {
+                    // Handle error
+                }
+            });
+        }
+
+        /**
+         * @see <a href="https://getstream.io/chat/docs/channel_invites/?language=java#inviting-users">Iniviting Users</a>
+         */
+        public void invitingUsersToExistingChannel() {
+            ChannelClient channelClient = client.channel("messaging", "general");
+
+            List<String> memberIds = Arrays.asList("nick");
+
+            channelClient.inviteMembers(memberIds, null, false).enqueue(result -> {
+                if (result.isSuccess()) {
+                    Channel channel = result.getOrNull();
                 } else {
                     // Handle result.error()
                 }
@@ -502,9 +574,9 @@ public class Channels {
         public void acceptingAnInvite() {
             channelClient.acceptInvite("Nick joined this channel!").enqueue(result -> {
                 if (result.isSuccess()) {
-                    Channel channel = result.data();
+                    Channel channel = result.getOrNull();
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
         }
@@ -517,7 +589,7 @@ public class Channels {
                 if (result.isSuccess()) {
                     // Invite rejected
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
         }
@@ -529,16 +601,16 @@ public class Channels {
             FilterObject filter = Filters.eq("invite", "accepted");
             int offset = 0;
             int limit = 10;
-            QuerySort<Channel> sort = new QuerySort<>();
+            QuerySorter<Channel> sort = new QuerySortByField<>();
             int messageLimit = 0;
             int memberLimit = 0;
             QueryChannelsRequest request = new QueryChannelsRequest(filter, offset, limit, sort, messageLimit, memberLimit);
 
             client.queryChannels(request).enqueue(result -> {
                 if (result.isSuccess()) {
-                    List<Channel> channels = result.data();
+                    List<Channel> channel = result.getOrNull();
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
         }
@@ -550,16 +622,16 @@ public class Channels {
             FilterObject filter = Filters.eq("invite", "rejected");
             int offset = 0;
             int limit = 10;
-            QuerySort<Channel> sort = new QuerySort<>();
+            QuerySorter<Channel> sort = new QuerySortByField<>();
             int messageLimit = 0;
             int memberLimit = 0;
             QueryChannelsRequest request = new QueryChannelsRequest(filter, offset, limit, sort, messageLimit, memberLimit);
 
             client.queryChannels(request).enqueue(result -> {
                 if (result.isSuccess()) {
-                    List<Channel> channels = result.data();
+                    List<Channel> channel = result.getOrNull();
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
         }
@@ -571,16 +643,16 @@ public class Channels {
             FilterObject filter = Filters.eq("invite", "pending");
             int offset = 0;
             int limit = 10;
-            QuerySort<Channel> sort = new QuerySort<>();
+            QuerySorter<Channel> sort = new QuerySortByField<>();
             int messageLimit = 0;
             int memberLimit = 0;
             QueryChannelsRequest request = new QueryChannelsRequest(filter, offset, limit, sort, messageLimit, memberLimit);
 
             client.queryChannels(request).enqueue(result -> {
                 if (result.isSuccess()) {
-                    List<Channel> channels = result.data();
+                    List<Channel> channel = result.getOrNull();
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
         }
@@ -603,17 +675,20 @@ public class Channels {
                     if (result.isSuccess()) {
                         // Channel is muted
                     } else {
-                        // Handle result.error()
+                        // Handle error
                     }
                 });
 
                 // Get list of muted channels when user is connected
-                User user = new User();
-                user.setId("user-id");
+                User user = new User.Builder()
+                        .withId("user-id")
+                        .build();
                 client.connectUser(user, "token").enqueue(result -> {
                     if (result.isSuccess()) {
                         // Result contains the list of channel mutes
-                        List<ChannelMute> mutes = result.data().getUser().getChannelMutes();
+                        List<ChannelMute> mutes = result.getOrNull().getUser().getChannelMutes();
+                    } else {
+                        // Handle error
                     }
                 });
 
@@ -645,7 +720,7 @@ public class Channels {
                 // Filter for all channels excluding muted ones
                 FilterObject notMutedFilter = Filters.and(
                         Filters.eq("muted", false),
-                        Filters.in("members", Arrays.asList(currentUserId))
+                        Filters.in("members", Collections.singletonList(currentUserId))
                 );
 
                 // Filter for muted channels
@@ -654,7 +729,7 @@ public class Channels {
                 // Executing a channels query with either of the filters
                 int offset = 0;
                 int limit = 10;
-                QuerySort<Channel> sort = new QuerySort<>();
+                QuerySorter<Channel> sort = new QuerySortByField<>();
                 int messageLimit = 0;
                 int memberLimit = 0;
                 client.queryChannels(new QueryChannelsRequest(
@@ -665,9 +740,9 @@ public class Channels {
                         messageLimit,
                         memberLimit)).enqueue(result -> {
                     if (result.isSuccess()) {
-                        List<Channel> channels = result.data();
+                        List<Channel> channels = result.getOrNull();
                     } else {
-                        // Handle result.error()
+                        // Handle error
                     }
                 });
             }
@@ -681,7 +756,7 @@ public class Channels {
                     if (result.isSuccess()) {
                         // Channel is unmuted
                     } else {
-                        // Handle result.error()
+                        // Handle error
                     }
                 });
             }
@@ -696,7 +771,7 @@ public class Channels {
                 if (result.isSuccess()) {
                     // Channel is hidden
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
 
@@ -705,7 +780,7 @@ public class Channels {
                 if (result.isSuccess()) {
                     // Channel is shown
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
 
@@ -714,7 +789,43 @@ public class Channels {
                 if (result.isSuccess()) {
                     // Channel is hidden
                 } else {
-                    // Handle result.error()
+                    // Handle error
+                }
+            });
+        }
+    }
+
+    /**
+     * @see <a href="https://getstream.io/chat/docs/android/disabling_channels/?language=java">Disabling Channels</a>
+     */
+    class DisablingChannels {
+
+        public void freeze() {
+            ChannelClient channelClient = client.channel("messaging", "general");
+            Map<String, Object> set = new HashMap<>();
+            set.put("freeze", true);
+            List<String> unset = new ArrayList<>();
+
+            channelClient.updatePartial(set, unset).enqueue(result -> {
+                if (result.isSuccess()) {
+                    Channel channel = result.getOrNull();
+                } else {
+                    // Handle error
+                }
+            });
+        }
+
+        public void unfreeze() {
+            ChannelClient channelClient = client.channel("messaging", "general");
+            Map<String, Object> set = new HashMap<>();
+            List<String> unset = new ArrayList<>();
+            unset.add("freeze");
+
+            channelClient.updatePartial(set, unset).enqueue(result -> {
+                if (result.isSuccess()) {
+                    Channel channel = result.getOrNull();
+                } else {
+                    // Handle error
                 }
             });
         }
@@ -730,9 +841,9 @@ public class Channels {
 
             channelClient.delete().enqueue(result -> {
                 if (result.isSuccess()) {
-                    Channel channel = result.data();
+                    Channel channel = result.getOrNull();
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
         }
@@ -750,7 +861,7 @@ public class Channels {
                 if (result.isSuccess()) {
                     // Channel is truncated
                 } else {
-                    // Handle result.error()
+                    // Handle error
                 }
             });
         }
@@ -785,11 +896,12 @@ public class Channels {
             // Get the cooldown value
             channelClient.query(new QueryChannelRequest()).enqueue(channelResult -> {
                 if (channelResult.isSuccess()) {
-                    final Channel channel = channelResult.data();
+                    Channel channel = channelResult.getOrNull();
                     int cooldown = channel.getCooldown();
 
-                    Message message = new Message();
-                    message.setText("Hello");
+                    Message message = new Message.Builder()
+                            .withText("Hello")
+                            .build();
                     channelClient.sendMessage(message).enqueue((messageResult) -> {
                         // After sending a message, block the UI temporarily
                         // The disable/enable UI methods have to be implemented by you
@@ -798,6 +910,8 @@ public class Channels {
                         new Handler(Looper.getMainLooper())
                                 .postDelayed(() -> enableMessageSendingUi(), cooldown);
                     });
+                } else {
+                    // Handle error
                 }
             });
         }

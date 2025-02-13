@@ -12,6 +12,17 @@
   <a href="https://github.com/GetStream/stream-chat-android/releases"><img src="https://img.shields.io/github/v/release/GetStream/stream-chat-android" /></a>
 </p>
 
+<div align="center">
+
+![stream-chat-android-client](https://img.shields.io/badge/stream--chat--android--client-3.16%20MB-lightgreen)
+![stream-chat-android-offline](https://img.shields.io/badge/stream--chat--android--offline-3.37%20MB-lightgreen)
+![stream-chat-android-ui-components](https://img.shields.io/badge/stream--chat--android--ui--components-7.86%20MB-lightgreen)
+![stream-chat-android-compose](https://img.shields.io/badge/stream--chat--android--compose-8.75%20MB-lightgreen)
+
+</div>
+
+> **Note:** The SDK sizes reflect the maximum possible addition if none of their internal dependencies are already in your app. In most cases, the actual impact will be smaller.
+
 This is the official Android SDK for [Stream Chat](https://getstream.io/chat/sdk/android/), a service for building chat and messaging applications. This library includes both a low-level chat SDK and a set of reusable UI components. Most users start with the UI components, and fall back to the lower level API when they want to customize things.
 
 We're proud to say that we're the first Android Chat SDK that supports Jetpack Compose! We [released](https://github.com/GetStream/stream-chat-android/releases/tag/4.15.0) our Compose UI Components one day after the official Jetpack Compose 1.0 release and our team members have been working hard on it since then.
@@ -68,9 +79,11 @@ The best place to start is the [Compose Chat Messaging Tutorial](https://getstre
 
 ## 🛠️ Installation and Getting Started 🚀
 
-See the [Dependencies](https://getstream.io/chat/docs/sdk/android/basics/dependencies/) and [Getting Started](https://getstream.io/chat/docs/sdk/android/basics/getting-started/) pages of the documentation.
+See the [Dependencies](https://getstream.io/chat/docs/sdk/android/basics/dependencies/) and [Getting Started](https://getstream.io/chat/docs/sdk/android/client/overview/) pages of the documentation.
 
-## 🏗️ Jetpack Compose Sample App
+## 🔮 Sample Apps
+
+### Compose Sample App
 
 Our Jetpack Compose implementation comes with its own [example app](/stream-chat-android-compose-sample), which you can play with to see how awesome Compose is.
 
@@ -84,7 +97,7 @@ Next, open [Android Studio](https://developer.android.com/studio) and open the n
 
 Since Compose is a highly customizable SDK, we're eager to hear your feedback on how it helps you build complex Chat UI. Join us in [this repo's discussions](https://github.com/GetStream/stream-chat-android/discussions) or tweet at us [@getstream_io](https://twitter.com/getstream_io)!
 
-## 📲 Sample App
+### Sample App
 
 However, if you're still using XML due to technical limitations, our UI Components SDK includes a fully functional [example app](/stream-chat-android-ui-components-sample) featuring threads, reactions, typing indicators, optimistic UI updates and offline storage. To run the sample app, start by cloning this repo:
 
@@ -93,6 +106,10 @@ git clone git@github.com:GetStream/stream-chat-android.git
 ```
 
 Next, open [Android Studio](https://developer.android.com/studio) and open the newly created project folder. You'll want to run the [`stream-chat-android-ui-components-sample`](/stream-chat-android-ui-components-sample) app.
+
+### Other Sample Apps
+
+We also maintain a dedicated repository for fully-fledged sample applications at [GetStream/Android-Samples](https://github.com/GetStream/Android-Samples).
 
 ## 💡 Supported features 🎨
 
@@ -118,6 +135,14 @@ Here are some of the features that the SDK supports out-of-the-box:
 - Unread message counts
 
 For more, see the [SDK's website](https://getstream.io/chat/sdk/android/).
+
+## 🛠️ R8 / ProGuard
+
+When utilizing **R8**, the rules for shrinking and obfuscation are applied automatically.
+
+If you are using **ProGuard**, you will need to add the following rules from [client](https://github.com/GetStream/stream-chat-android/blob/main/stream-chat-android-client/consumer-proguard-rules.pro), [ui-common](https://github.com/GetStream/stream-chat-android/blob/main/stream-chat-android-ui-common/consumer-proguard-rules.pro), and [previewdata](https://github.com/GetStream/stream-chat-android/blob/main/stream-chat-android-previewdata/consumer-proguard-rules.pro) modules to your application.
+
+You might also need apply rules for [Coroutines](https://github.com/Kotlin/kotlinx.coroutines/blob/master/kotlinx-coroutines-core/jvm/resources/META-INF/proguard/coroutines.pro), [Retrofit](https://github.com/square/retrofit/blob/master/retrofit/src/main/resources/META-INF/proguard/retrofit2.pro) and [OkHttp](https://github.com/square/okhttp/blob/master/okhttp/src/jvmMain/resources/META-INF/proguard/okhttp3.pro) which are dependencies of the SDK.
 
 ## 💼 We are hiring!
 

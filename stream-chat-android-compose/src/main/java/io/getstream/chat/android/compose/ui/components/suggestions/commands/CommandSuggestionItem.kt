@@ -27,19 +27,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.material.Text
-import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.getstream.chat.android.client.models.Command
 import io.getstream.chat.android.compose.R
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
+import io.getstream.chat.android.models.Command
 
 /**
  * Represents the command suggestion item in the command suggestion list popup.
@@ -56,10 +57,14 @@ public fun CommandSuggestionItem(
     modifier: Modifier = Modifier,
     onCommandSelected: (Command) -> Unit = {},
     leadingContent: @Composable RowScope.(Command) -> Unit = {
-        DefaultCommandSuggestionItemLeadingContent()
+        with(ChatTheme.componentFactory) {
+            MessageComposerCommandSuggestionItemLeadingContent(command = it)
+        }
     },
     centerContent: @Composable RowScope.(Command) -> Unit = {
-        DefaultCommandSuggestionItemCenterContent(command = it)
+        with(ChatTheme.componentFactory) {
+            MessageComposerCommandSuggestionItemCenterContent(command = it, modifier = Modifier)
+        }
     },
 ) {
     Row(
@@ -68,13 +73,14 @@ public fun CommandSuggestionItem(
             .wrapContentHeight()
             .clickable(
                 onClick = { onCommandSelected(command) },
-                indication = rememberRipple(),
-                interactionSource = remember { MutableInteractionSource() }
+                indication = ripple(),
+                interactionSource = remember { MutableInteractionSource() },
             )
             .padding(
                 vertical = ChatTheme.dimens.commandSuggestionItemVerticalPadding,
-                horizontal = ChatTheme.dimens.commandSuggestionItemHorizontalPadding
-            ),
+                horizontal = ChatTheme.dimens.commandSuggestionItemHorizontalPadding,
+            )
+            .testTag("Stream_SuggestionListGiphyButton"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         leadingContent(command)
@@ -93,7 +99,7 @@ internal fun DefaultCommandSuggestionItemLeadingContent() {
             .padding(end = 8.dp)
             .size(ChatTheme.dimens.commandSuggestionItemIconSize),
         painter = painterResource(id = R.drawable.stream_compose_ic_giphy),
-        contentDescription = null
+        contentDescription = null,
     )
 }
 
@@ -111,21 +117,21 @@ internal fun RowScope.DefaultCommandSuggestionItemCenterContent(
     val commandDescription = LocalContext.current.getString(
         R.string.stream_compose_message_composer_command_template,
         command.name,
-        command.args
+        command.args,
     )
 
     Row(
         modifier = modifier
             .weight(1f)
             .wrapContentHeight(),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = command.name.replaceFirstChar(Char::uppercase),
             style = ChatTheme.typography.bodyBold,
             color = ChatTheme.colors.textHighEmphasis,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
         )
 
         Spacer(modifier = Modifier.width(8.dp))
@@ -135,7 +141,7 @@ internal fun RowScope.DefaultCommandSuggestionItemCenterContent(
             style = ChatTheme.typography.body,
             color = ChatTheme.colors.textLowEmphasis,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

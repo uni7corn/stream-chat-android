@@ -16,10 +16,9 @@
 
 package io.getstream.chat.android.client.utils
 
-import io.getstream.chat.android.test.TestCoroutineExtension
+import io.getstream.chat.android.randomString
 import org.amshove.kluent.`should be equal to`
 import org.junit.Test
-import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.runner.RunWith
 import org.robolectric.ParameterizedRobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -37,9 +36,6 @@ internal class TokenUtilsTest(
     }
 
     companion object {
-        @JvmField
-        @RegisterExtension
-        val testCoroutines = TestCoroutineExtension()
 
         @Suppress("MaxLineLength")
         @JvmStatic
@@ -47,11 +43,11 @@ internal class TokenUtilsTest(
         fun data(): Collection<Array<Any?>> = listOf(
             arrayOf(
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiamMifQ==.devtoken",
-                "jc"
+                "jc",
             ),
             arrayOf(
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidmlzaGFsIn0=.devtoken",
-                "vishal"
+                "vishal",
             ),
             arrayOf(
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYW1pbiJ9.devtoken",
@@ -120,6 +116,30 @@ internal class TokenUtilsTest(
             arrayOf(
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoicWF0ZXN0MyJ9.kLZJz5kl7e3Zw7i2T39Yp05_nAmh9RGG0rt6-5zOpfE",
                 "qatest3",
+            ),
+            arrayOf(
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.kLZJz5kl7e3Zw7i2T39Yp05_nAmh9RGG0rt6-5zOpfE",
+                "",
+            ),
+            arrayOf(
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.",
+                "",
+            ),
+            arrayOf(
+                randomString(),
+                "",
+            ),
+            arrayOf(
+                "${randomString()}.",
+                "",
+            ),
+            arrayOf(
+                "${randomString()}.${randomString()}",
+                "",
+            ),
+            arrayOf(
+                "",
+                "",
             ),
         )
     }

@@ -13,6 +13,7 @@ import io.getstream.chat.android.compose.ui.messages.MessagesScreen
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
 import io.getstream.chat.android.compose.ui.util.ReactionIcon
 import io.getstream.chat.android.compose.ui.util.ReactionIconFactory
+import io.getstream.chat.android.compose.viewmodel.messages.MessagesViewModelFactory
 import io.getstream.chat.docs.R
 
 /**
@@ -30,9 +31,12 @@ private object ProvidingCustomReactionsSnippet {
                 // Provide a factory with custom reactions
                 ChatTheme(reactionIconFactory = CustomReactionIconFactory()) {
                     MessagesScreen(
-                        channelId = channelId,
+                        viewModelFactory = MessagesViewModelFactory(
+                            context = this,
+                            channelId = channelId,
+                        ),
                         onBackPressed = { finish() },
-                        onHeaderActionClick = {}
+                        onHeaderTitleClick = {},
                     )
                 }
             }
@@ -56,11 +60,6 @@ private object ProvidingCustomReactionsSnippet {
         }
 
         @Composable
-        override fun createReactionIcons(): Map<String, ReactionIcon> {
-            return supportedReactions.associateWith { createReactionIcon(it) }
-        }
-
-        @Composable
         override fun createReactionIcon(type: String): ReactionIcon {
             return when (type) {
                 THUMBS_UP -> ReactionIcon(
@@ -79,8 +78,13 @@ private object ProvidingCustomReactionsSnippet {
                     painter = painterResource(R.drawable.ic_mood_bad),
                     selectedPainter = painterResource(R.drawable.ic_mood_bad_selected)
                 )
-                else -> throw IllegalArgumentException()
+                else -> throw IllegalArgumentException("Unsupported reaction type")
             }
+        }
+
+        @Composable
+        override fun createReactionIcons(): Map<String, ReactionIcon> {
+            return supportedReactions.associateWith { createReactionIcon(it) }
         }
 
         companion object {

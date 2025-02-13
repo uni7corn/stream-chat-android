@@ -16,30 +16,30 @@
 
 package io.getstream.chat.android.client.notifications
 
+import android.app.Application
 import android.content.Context
+import io.getstream.android.push.permissions.NotificationPermissionManager
 import io.getstream.chat.android.client.ChatClient
 import io.getstream.chat.android.client.events.NewMessageEvent
-import io.getstream.chat.android.client.logger.ChatLogger
-import io.getstream.chat.android.client.models.Channel
-import io.getstream.chat.android.client.models.Device
-import io.getstream.chat.android.client.models.Message
-import io.getstream.chat.android.client.models.PushMessage
 import io.getstream.chat.android.client.notifications.handler.NotificationConfig
 import io.getstream.chat.android.client.notifications.handler.NotificationHandler
-import io.getstream.chat.android.core.internal.InternalStreamChatApi
 import io.getstream.chat.android.core.internal.coroutines.DispatcherProvider
+import io.getstream.chat.android.models.Channel
+import io.getstream.chat.android.models.Device
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.models.PushMessage
+import io.getstream.log.taggedLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-@InternalStreamChatApi
-public interface ChatNotifications {
-    public fun onSetUser()
-    public fun setDevice(device: Device)
-    public fun onPushMessage(message: PushMessage, pushNotificationReceivedListener: PushNotificationReceivedListener)
-    public fun onNewMessageEvent(newMessageEvent: NewMessageEvent)
-    public fun onLogout()
-    public fun displayNotification(channel: Channel, message: Message)
-    public fun dismissChannelNotifications(channelType: String, channelId: String)
+internal interface ChatNotifications {
+    fun onSetUser()
+    fun setDevice(device: Device)
+    fun onPushMessage(message: PushMessage, pushNotificationReceivedListener: PushNotificationReceivedListener)
+    fun onNewMessageEvent(newMessageEvent: NewMessageEvent)
+    suspend fun onLogout(flushPersistence: Boolean)
+    fun displayNotification(channel: Channel, message: Message)
+    fun dismissChannelNotifications(channelType: String, channelId: String)
 }
 
 @Suppress("TooManyFunctions")
@@ -49,20 +49,38 @@ internal class ChatNotificationsImpl constructor(
     private val context: Context,
     private val scope: CoroutineScope = CoroutineScope(DispatcherProvider.IO),
 ) : ChatNotifications {
-    private val logger = ChatLogger.get("ChatNotifications")
+    private val logger by taggedLogger("Chat:Notifications")
 
     private val pushTokenUpdateHandler = PushTokenUpdateHandler(context)
     private val showedMessages = mutableSetOf<String>()
+    private val permissionManager: NotificationPermissionManager =
+        NotificationPermissionManager.createNotificationPermissionsManager(
+            application = context.applicationContext as Application,
+            requestPermissionOnAppLaunch = notificationConfig.requestPermissionOnAppLaunch,
+            onPermissionStatus = { status ->
+                logger.i { "[onPermissionStatus] status: $status" }
+                handler.onNotificationPermissionStatus(status)
+            },
+        )
+
+    init {
+        logger.i { "<init> no args" }
+    }
 
     override fun onSetUser() {
-        notificationConfig.pushDeviceGenerators.firstOrNull { it.isValidForThisDevice(context) }
+        logger.i { "[onSetUser] no args" }
+        permissionManager
+            .takeIf { notificationConfig.requestPermissionOnAppLaunch() }
+            ?.start()
+        notificationConfig.pushDeviceGenerators.firstOrNull { it.isValidForThisDevice() }
             ?.let {
                 it.onPushDeviceGeneratorSelected()
-                it.asyncGenerateDevice(::setDevice)
+                it.asyncGeneratePushDevice { setDevice(it.toDevice()) }
             }
     }
 
     override fun setDevice(device: Device) {
+        logger.i { "[setDevice] device: $device" }
         scope.launch {
             pushTokenUpdateHandler.updateDeviceIfNecessary(device)
         }
@@ -72,7 +90,7 @@ internal class ChatNotificationsImpl constructor(
         message: PushMessage,
         pushNotificationReceivedListener: PushNotificationReceivedListener,
     ) {
-        logger.logI("onReceivePushMessage: $message")
+        logger.i { "[onReceivePushMessage] message: $message" }
 
         pushNotificationReceivedListener.onPushNotificationReceived(message.channelType, message.channelId)
 
@@ -85,17 +103,19 @@ internal class ChatNotificationsImpl constructor(
         val currentUserId = ChatClient.instance().getCurrentUser()?.id
         if (newMessageEvent.message.user.id == currentUserId) return
 
-        logger.logD("Handling $newMessageEvent")
+        logger.d { "[onNewMessageEvent] event: $newMessageEvent" }
         if (!handler.onChatEvent(newMessageEvent)) {
-            logger.logI("Handling $newMessageEvent internally")
+            logger.i { "[onNewMessageEvent] handle event internally" }
             handleEvent(newMessageEvent)
         }
     }
 
-    override fun onLogout() {
+    override suspend fun onLogout(flushPersistence: Boolean) {
+        logger.i { "[onLogout] flusPersistence: $flushPersistence" }
+        permissionManager.stop()
         handler.dismissAllNotifications()
-        removeStoredDevice()
         cancelLoadDataWork()
+        if (flushPersistence) { removeStoredDevice() }
     }
 
     private fun cancelLoadDataWork() {
@@ -114,10 +134,11 @@ internal class ChatNotificationsImpl constructor(
     }
 
     private fun handlePushMessage(message: PushMessage) {
-        obtainNotifactionData(message.channelId, message.channelType, message.messageId)
+        obtainNotificationData(message.channelId, message.channelType, message.messageId)
     }
 
-    private fun obtainNotifactionData(channelId: String, channelType: String, messageId: String) {
+    private fun obtainNotificationData(channelId: String, channelType: String, messageId: String) {
+        logger.d { "[obtainNotificationData] channelCid: $channelId:$channelType, messageId: $messageId" }
         LoadNotificationDataWorker.start(
             context = context,
             channelId = channelId,
@@ -127,23 +148,21 @@ internal class ChatNotificationsImpl constructor(
     }
 
     private fun handleEvent(event: NewMessageEvent) {
-        obtainNotifactionData(event.channelId, event.channelType, event.message.id)
+        obtainNotificationData(event.channelId, event.channelType, event.message.id)
     }
 
     private fun wasNotificationDisplayed(messageId: String) = showedMessages.contains(messageId)
 
     override fun displayNotification(channel: Channel, message: Message) {
-        logger.logD("Showing notification with loaded data")
+        logger.d { "[displayNotification] channel.cid: ${channel.cid}, message.cid: ${message.cid}" }
         if (!wasNotificationDisplayed(message.id)) {
             showedMessages.add(message.id)
             handler.showNotification(channel, message)
         }
     }
 
-    private fun removeStoredDevice() {
-        scope.launch {
-            pushTokenUpdateHandler.removeStoredDevice()
-        }
+    private suspend fun removeStoredDevice() {
+        pushTokenUpdateHandler.removeStoredDevice()
     }
 }
 
@@ -156,7 +175,7 @@ internal object NoOpChatNotifications : ChatNotifications {
     ) = Unit
 
     override fun onNewMessageEvent(newMessageEvent: NewMessageEvent) = Unit
-    override fun onLogout() = Unit
+    override suspend fun onLogout(flushPersistence: Boolean) = Unit
     override fun displayNotification(channel: Channel, message: Message) = Unit
     override fun dismissChannelNotifications(channelType: String, channelId: String) = Unit
 }

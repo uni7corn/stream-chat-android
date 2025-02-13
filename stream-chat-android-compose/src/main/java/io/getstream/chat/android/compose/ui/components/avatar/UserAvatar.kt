@@ -23,15 +23,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import io.getstream.chat.android.client.models.User
-import io.getstream.chat.android.client.models.initials
-import io.getstream.chat.android.compose.previewdata.PreviewUserData
 import io.getstream.chat.android.compose.state.OnlineIndicatorAlignment
 import io.getstream.chat.android.compose.ui.components.OnlineIndicator
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
+import io.getstream.chat.android.models.User
+import io.getstream.chat.android.previewdata.PreviewUserData
+import io.getstream.chat.android.ui.common.utils.extensions.initials
 
 /**
  * Represents the [User] avatar that's shown on the Messages screen or in headers of DMs.
@@ -45,6 +47,7 @@ import io.getstream.chat.android.compose.ui.theme.ChatTheme
  * @param contentDescription The content description of the avatar.
  * @param showOnlineIndicator If we show online indicator or not.
  * @param onlineIndicatorAlignment The alignment of online indicator.
+ * @param initialsAvatarOffset The initials offset to apply to the avatar.
  * @param onlineIndicator Custom composable that allows to replace the default online indicator.
  * @param onClick The handler when the user clicks on the avatar.
  */
@@ -56,21 +59,25 @@ public fun UserAvatar(
     textStyle: TextStyle = ChatTheme.typography.title3Bold,
     contentDescription: String? = null,
     showOnlineIndicator: Boolean = true,
+    placeholderPainter: Painter? = null,
     onlineIndicatorAlignment: OnlineIndicatorAlignment = OnlineIndicatorAlignment.TopEnd,
+    initialsAvatarOffset: DpOffset = DpOffset(0.dp, 0.dp),
     onlineIndicator: @Composable BoxScope.() -> Unit = {
         DefaultOnlineIndicator(onlineIndicatorAlignment)
     },
     onClick: (() -> Unit)? = null,
 ) {
     Box(modifier = modifier) {
-        Avatar(
+        ChatTheme.componentFactory.Avatar(
             modifier = Modifier.fillMaxSize(),
             imageUrl = user.image,
             initials = user.initials,
             textStyle = textStyle,
             shape = shape,
+            placeholderPainter = placeholderPainter,
             contentDescription = contentDescription,
-            onClick = onClick
+            initialsAvatarOffset = initialsAvatarOffset,
+            onClick = onClick,
         )
 
         if (showOnlineIndicator && user.online) {

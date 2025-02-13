@@ -16,6 +16,10 @@
 -->
 <resources>
     <declare-styleable name="MessageListView">
+        <attr name="streamUiUnreadLabelButtonEnabled" format="boolean" />
+        <attr name="streamUiUnreadLabelButtonColor" format="color|reference" />
+        <attr name="streamUiUnreadLabelButtonRippleColor" format="color|reference" />
+
         <!-- Scroll button-->
         <attr name="streamUiScrollButtonEnabled" format="boolean" />
         <attr name="streamUiScrollButtonUnreadEnabled" format="boolean" />
@@ -24,11 +28,73 @@
         <attr name="streamUiScrollButtonBadgeColor" format="color|reference" />
         <attr name="streamUiScrollButtonIcon" format="reference" />
         <attr name="streamUiScrollButtonElevation" format="dimension|reference" />
+        <!-- Sets the bottom margin of the scroll button inside MessageListView -->
+        <attr name="streamUiScrollButtonBottomMargin" format="dimension|reference" />
+        <!-- Sets the end margin of the scroll button inside MessageListView -->
+        <attr name="streamUiScrollButtonEndMargin" format="dimension|reference" />
+        <!-- Controls the internal margins of the scroll button with respect to its parent.
+
+         You should use this one if you want to adjust the distance of the unread count badge to the scroll button.-->
+        <attr name="streamUIScrollButtonInternalMargin" format="dimension|reference" />
         <attr name="streamUiScrollButtonBadgeTextSize" format="dimension|reference" />
         <attr name="streamUiScrollButtonBadgeTextColor" format="color|reference" />
         <attr name="streamUiScrollButtonBadgeTextFont" format="reference" />
         <attr name="streamUiScrollButtonBadgeFontAssets" format="string" />
         <attr name="streamUiScrollButtonBadgeTextStyle">
+            <flag name="normal" value="0" />
+            <flag name="bold" value="1" />
+            <flag name="italic" value="2" />
+        </attr>
+        <!-- Sets the background drawable of the unread count badge -->
+        <attr name="streamUiScrollButtonBadgeIcon" format="reference" />
+        <!-- Sets the elevation of the unread count badge -->
+        <attr name="streamUiScrollButtonBadgeElevation" format="dimension|reference" />
+        <!-- Adjusts the gravity of the scroll button badge.
+
+        These values are the same as standard Android values. -->
+        <attr name="streamUiScrollButtonBadgeGravity">
+            <!-- Push object to the top of its container, not changing its size. -->
+            <flag name="top" value="0x30" />
+            <!-- Push object to the bottom of its container, not changing its size. -->
+            <flag name="bottom" value="0x50" />
+            <!-- Push object to the left of its container, not changing its size. -->
+            <flag name="left" value="0x03" />
+            <!-- Push object to the right of its container, not changing its size. -->
+            <flag name="right" value="0x05" />
+            <!-- Place object in the vertical center of its container, not changing its size. -->
+            <flag name="center_vertical" value="0x10" />
+            <!-- Grow the vertical size of the object if needed so it completely fills its container. -->
+            <flag name="fill_vertical" value="0x70" />
+            <!-- Place object in the horizontal center of its container, not changing its size. -->
+            <flag name="center_horizontal" value="0x01" />
+            <!-- Grow the horizontal size of the object if needed so it completely fills its container. -->
+            <flag name="fill_horizontal" value="0x07" />
+            <!-- Place the object in the center of its container in both the vertical and horizontal axis, not changing its size. -->
+            <flag name="center" value="0x11" />
+            <!-- Grow the horizontal and vertical size of the object if needed so it completely fills its container. -->
+            <flag name="fill" value="0x77" />
+            <!-- Additional option that can be set to have the top and/or bottom edges of
+                 the child clipped to its container's bounds.
+                 The clip will be based on the vertical gravity: a top gravity will clip the bottom
+                 edge, a bottom gravity will clip the top edge, and neither will clip both edges. -->
+            <flag name="clip_vertical" value="0x80" />
+            <!-- Additional option that can be set to have the left and/or right edges of
+                 the child clipped to its container's bounds.
+                 The clip will be based on the horizontal gravity: a left gravity will clip the right
+                 edge, a right gravity will clip the left edge, and neither will clip both edges. -->
+            <flag name="clip_horizontal" value="0x08" />
+            <!-- Push object to the beginning of its container, not changing its size. -->
+            <flag name="start" value="0x00800003" />
+            <!-- Push object to the end of its container, not changing its size. -->
+            <flag name="end" value="0x00800005" />
+        </attr>
+
+
+        <attr name="streamUiUnreadLabelButtonTextSize" format="dimension|reference" />
+        <attr name="streamUiUnreadLabelButtonTextColor" format="color|reference" />
+        <attr name="streamUiUnreadLabelButtonTextFont" format="reference" />
+        <attr name="streamUiUnreadLabelButtonFontAssets" format="string" />
+        <attr name="streamUiUnreadLabelButtonTextStyle">
             <flag name="normal" value="0" />
             <flag name="bold" value="1" />
             <flag name="italic" value="2" />
@@ -101,12 +167,34 @@
             <flag name="italic" value="2" />
         </attr>
 
+        <!-- Message text style language in footer -->
+        <attr name="streamUiMessageTextSizeLanguage" format="dimension|reference" />
+        <attr name="streamUiMessageTextColorLanguage" format="color" />
+        <attr name="streamUiMessageTextFontLanguage" format="reference" />
+        <attr name="streamUiMessageTextFontAssetsLanguage" format="string" />
+        <attr name="streamUiMessageTextStyleLanguage">
+            <flag name="normal" value="0" />
+            <flag name="bold" value="1" />
+            <flag name="italic" value="2" />
+        </attr>
+
         <!-- Message text style thread counter in footer -->
         <attr name="streamUiMessageTextSizeThreadCounter" format="dimension|reference" />
         <attr name="streamUiMessageTextColorThreadCounter" format="color" />
         <attr name="streamUiMessageTextFontThreadCounter" format="reference" />
         <attr name="streamUiMessageTextFontAssetsThreadCounter" format="string" />
         <attr name="streamUiMessageTextStyleThreadCounter">
+            <flag name="normal" value="0" />
+            <flag name="bold" value="1" />
+            <flag name="italic" value="2" />
+        </attr>
+
+        <!-- Message text style read counter in footer -->
+        <attr name="streamUiMessageTextSizeReadCounter" format="dimension|reference" />
+        <attr name="streamUiMessageTextColorReadCounter" format="color" />
+        <attr name="streamUiMessageTextFontReadCounter" format="reference" />
+        <attr name="streamUiMessageTextFontAssetsReadCounter" format="string" />
+        <attr name="streamUiMessageTextStyleReadCounter">
             <flag name="normal" value="0" />
             <flag name="bold" value="1" />
             <flag name="italic" value="2" />
@@ -157,6 +245,7 @@
         <!-- Message Reply background color -->
         <attr name="streamUiMessageReplyBackgroundColorMine" format="color" />
         <attr name="streamUiMessageReplyBackgroundColorTheirs" format="color" />
+
         <!-- Message Reply text style mine -->
         <attr name="streamUiMessageReplyTextSizeMine" format="dimension|reference" />
         <attr name="streamUiMessageReplyTextColorMine" format="color" />
@@ -238,12 +327,62 @@
             <flag name="italic" value="2" />
         </attr>
 
-        <!-- System message text style -->
+        <!-- Message deleted style mine -->
+        <attr name="streamUiDeletedMessageBackgroundColorMine" format="color" />
+        <attr name="streamUiMessageTextSizeMessageDeletedMine" format="dimension|reference" />
+        <attr name="streamUiMessageTextColorMessageDeletedMine" format="color" />
+        <attr name="streamUiMessageTextFontMessageDeletedMine" format="reference" />
+        <attr name="streamUiMessageTextFontAssetsMessageDeletedMine" format="string" />
+        <attr name="streamUiMessageTextStyleMessageDeletedMine">
+            <flag name="normal" value="0" />
+            <flag name="bold" value="1" />
+            <flag name="italic" value="2" />
+        </attr>
+
+        <!-- Message deleted style theirs -->
+        <attr name="streamUiDeletedMessageBackgroundColorTheirs" format="color" />
+        <attr name="streamUiMessageTextSizeMessageDeletedTheirs" format="dimension|reference" />
+        <attr name="streamUiMessageTextColorMessageDeletedTheirs" format="color" />
+        <attr name="streamUiMessageTextFontMessageDeletedTheirs" format="reference" />
+        <attr name="streamUiMessageTextFontAssetsMessageDeletedTheirs" format="string" />
+        <attr name="streamUiMessageTextStyleMessageDeletedTheirs">
+            <flag name="normal" value="0" />
+            <flag name="bold" value="1" />
+            <flag name="italic" value="2" />
+        </attr>
+
+        <!-- System message style -->
         <attr name="streamUiSystemMessageTextSize" format="dimension|reference" />
         <attr name="streamUiSystemMessageTextColor" format="color" />
         <attr name="streamUiSystemMessageTextFont" format="reference" />
         <attr name="streamUiSystemMessageTextFontAssets" format="string" />
         <attr name="streamUiSystemMessageTextStyle">
+            <flag name="normal" value="0" />
+            <flag name="bold" value="1" />
+            <flag name="italic" value="2" />
+        </attr>
+        <!-- System message alignment -->
+        <attr name="streamUiSystemMessageAlignment">
+            <!-- Push object to the left of its container, not changing its size. -->
+            <flag name="left" value="0x03" />
+            <!-- Push object to the right of its container, not changing its size. -->
+            <flag name="right" value="0x05" />
+            <!-- Place the object in the center of its container in both the vertical and horizontal axis, not changing its size. -->
+            <flag name="center" value="0x11" />
+            <!-- Push object to the beginning of its container, not changing its size. -->
+            <flag name="start" value="0x00800003" />
+            <!-- Push object to the end of its container, not changing its size. -->
+            <flag name="end" value="0x00800005" />
+        </attr>
+
+
+        <!-- Unread Separator text style -->
+        <attr name="streamUiUnreadSeparatorBackgroundColor" format="color" />
+        <attr name="streamUiUnreadSeparatorTextSize" format="dimension|reference" />
+        <attr name="streamUiUnreadSeparatorTextColor" format="color" />
+        <attr name="streamUiUnreadSeparatorTextFont" format="reference" />
+        <attr name="streamUiUnreadSeparatorTextFontAssets" format="string" />
+        <attr name="streamUiUnreadSeparatorTextStyle">
             <flag name="normal" value="0" />
             <flag name="bold" value="1" />
             <flag name="italic" value="2" />
@@ -269,8 +408,10 @@
         <attr name="streamUiReplyOptionIcon" format="reference" />
         <attr name="streamUiReplyEnabled" format="boolean" />
         <attr name="streamUiCopyMessageActionEnabled" format="boolean" />
+        <attr name="streamUiMarkAsUnreadEnabled" format="boolean" />
         <attr name="streamUiRetryMessageEnabled" format="boolean" />
         <attr name="streamUiCopyOptionIcon" format="reference" />
+        <attr name="streamUiMarkAsUnreadOptionIcon" format="reference" />
         <attr name="streamUiEditOptionIcon" format="reference" />
         <attr name="streamUiEditMessageEnabled" format="boolean" />
         <attr name="streamUiFlagOptionIcon" format="reference" />
@@ -279,17 +420,15 @@
         <attr name="streamUiPinOptionIcon" format="reference" />
         <attr name="streamUiUnpinOptionIcon" format="reference" />
         <attr name="streamUiPinMessageEnabled" format="boolean" />
-        <attr name="streamUiMuteOptionIcon" format="reference" />
-        <attr name="streamUiUnmuteOptionIcon" format="reference" />
-        <attr name="streamUiMuteUserEnabled" format="boolean" />
-        <attr name="streamUiBlockOptionIcon" format="reference" />
-        <attr name="streamUiBlockUserEnabled" format="boolean" />
         <attr name="streamUiDeleteOptionIcon" format="reference" />
         <attr name="streamUiDeleteConfirmationEnabled" format="boolean" />
         <attr name="streamUiDeleteMessageEnabled" format="boolean" />
         <attr name="streamUiThreadsEnabled" format="boolean" />
         <attr name="streamUiThreadReplyOptionIcon" format="reference" />
         <attr name="streamUiMessageOptionBackgroundColor" format="color" />
+        <attr name="streamUiBlockUserOptionEnabled" format="boolean" />
+        <attr name="streamUiBlockUserOptionIcon" format="reference" />
+        <attr name="streamUiUnblockUserOptionIcon" format="reference" />
 
         <attr name="streamUiMessageOptionsTextSize" format="dimension|reference" />
         <attr name="streamUiMessageOptionsTextColor" format="color|reference" />
@@ -318,6 +457,13 @@
             <enum name="by_user_inverted" value="3" />
         </attr>
 
+        <attr name="streamUiMessageOptionsReactionSorting" format="enum">
+            <enum name="by_first_reaction_at" value="0" />
+            <enum name="by_last_reaction_at" value="1" />
+            <enum name="by_sum_score" value="2" />
+            <enum name="by_count" value="3" />
+        </attr>
+
         <!-- User reactions card -->
         <attr name="streamUiUserReactionsBackgroundColor" format="color" />
 
@@ -331,7 +477,7 @@
             <flag name="italic" value="2" />
         </attr>
 
-        <!-- Options overly dialog -->
+        <!-- Options overlay dialog -->
         <attr name="streamUiOptionsOverlayDimColor" format="color" />
 
         <!-- Giphy view holder -->
@@ -390,6 +536,7 @@
             <flag name="italic" value="2" />
         </attr>
         <attr name="streamUiMessageListLoadingView" format="reference" />
+        <attr name="streamUiMessageListLoadingMoreView" format="reference" />
         <attr name="streamUiEmptyStateTextSize" format="dimension|reference" />
         <attr name="streamUiEmptyStateTextColor" format="color|reference" />
         <attr name="streamUiEmptyStateTextFont" format="reference" />
@@ -432,5 +579,39 @@
         <attr name="streamUiMessageMaxWidthFactorMine" format="fraction" />
         <!-- Fraction used to compute max width for message sent by other user. Should be in [75% - 100%] range. -->
         <attr name="streamUiMessageMaxWidthFactorTheirs" format="fraction" />
+
+        <!-- Prevent scroll while a dialog is shown over the message list -->
+        <attr name="streamUiDisableScrollWhenShowingDialog" format="boolean" />
+
+        <!-- The margin between the selected message and the edit reactions bubble on the options overlay. -->
+        <attr name="streamUiOptionsOverlayEditReactionsMarginBottom" format="dimension|reference" />
+        <!-- The margin between the edit reactions bubble on the options overlay and the parent. -->
+        <attr name="streamUiOptionsOverlayEditReactionsMarginTop" format="dimension|reference" />
+        <attr name="streamUiOptionsOverlayEditReactionsMarginStart" format="dimension|reference" />
+        <attr name="streamUiOptionsOverlayEditReactionsMarginEnd" format="dimension|reference" />
+
+        <!-- The margin between the selected message and the user reaction list on the options overlay. -->
+        <attr name="streamUiOptionsOverlayUserReactionsMarginTop" format="dimension|reference" />
+        <!-- The margin between the message option list and the user reaction list on the options overlay. -->
+        <attr name="streamUiOptionsOverlayUserReactionsMarginBottom" format="dimension|reference" />
+        <!-- The margin between the user reaction list on the options overlay and the parent. -->
+        <attr name="streamUiOptionsOverlayUserReactionsMarginStart" format="dimension|reference" />
+        <attr name="streamUiOptionsOverlayUserReactionsMarginEnd" format="dimension|reference" />
+
+        <!-- The margin between the selected message and the message option list on the options overlay. -->
+        <attr name="streamUiOptionsOverlayMessageOptionsMarginTop" format="dimension|reference" />
+        <!-- The margin between the message option list on the options overlay and the parent. -->
+        <attr name="streamUiOptionsOverlayMessageOptionsMarginBottom" format="dimension|reference" />
+        <attr name="streamUiOptionsOverlayMessageOptionsMarginStart" format="dimension|reference" />
+        <attr name="streamUiOptionsOverlayMessageOptionsMarginEnd" format="dimension|reference" />
+
+        <!-- Show the edit reactions bubble for unsent messages on the options overlay. -->
+        <attr name="streamUiShowReactionsForUnsentMessages" format="boolean" />
+        <!-- Shows a counter next to the read status of a message. -->
+        <attr name="streamUiReadCount" format="boolean" />
+
+        <!-- Audio record player view style -->
+        <attr name="streamUiMessageListAudioRecordPlayerViewStyleOwn" format="reference" />
+        <attr name="streamUiMessageListAudioRecordPlayerViewStyleTheirs" format="reference" />
     </declare-styleable>
 </resources>

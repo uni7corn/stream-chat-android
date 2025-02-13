@@ -17,7 +17,9 @@
 package io.getstream.chat.android.client.utils
 
 import io.getstream.chat.android.client.call.RetrofitCall
-import io.getstream.chat.android.client.parser2.MoshiChatParser
+import io.getstream.chat.android.client.parser2.ParserFactory
+import io.getstream.chat.android.core.internal.coroutines.DispatcherProvider
+import kotlinx.coroutines.CoroutineScope
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
@@ -41,8 +43,8 @@ internal class RetroError<T : Any>(
     fun toRetrofitCall(): RetrofitCall<T> {
         return RetrofitCall(
             call = this,
-            parser = MoshiChatParser(),
-            callbackExecutor = { runnable -> runnable.run() },
+            parser = ParserFactory.createMoshiChatParser(),
+            CoroutineScope(DispatcherProvider.IO),
         )
     }
 
@@ -76,8 +78,8 @@ internal class RetroError<T : Any>(
                 exceptionFields = exceptionFields,
                 duration = duration,
                 moreInfo = moreInfo,
-                mediaType = mediaType
-            )
+                mediaType = mediaType,
+            ),
         )
     }
 
@@ -120,7 +122,7 @@ internal class RetroError<T : Any>(
 
             errorJsonMembers.add(
                 """"exception_fields":""" +
-                    exceptionFieldMembers.joinToString(separator = ",", prefix = "{", postfix = "}")
+                    exceptionFieldMembers.joinToString(separator = ",", prefix = "{", postfix = "}"),
             )
         }
 

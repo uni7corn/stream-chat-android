@@ -20,9 +20,12 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,72 +33,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextDirection
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.getstream.chat.android.compose.R
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
-
-/**
- * Custom input field that we use for our UI. It's fairly simple - shows a basic input with clipped
- * corners and a border stroke, with some extra padding on each side.
- *
- * Within it, we allow for custom decoration, so that the user can define what the input field looks like
- * when filled with content.
- *
- * @param value The current input value.
- * @param onValueChange Handler when the value changes as the user types.
- * @param enabled If the Composable is enabled for text input or not.
- * @param modifier Modifier for styling.
- * @param maxLines The number of lines that are allowed in the input, no limit by default.
- * @param border The [BorderStroke] that will appear around the input field.
- * @param innerPadding The padding inside the input field, around the label or input.
- * @param decorationBox Composable function that represents the input field decoration as it's filled with content.
- */
-@Deprecated(
-    message = "Deprecated in favor of new InputField implementation providing more padding customization options.",
-    replaceWith = ReplaceWith(
-        expression =
-        "public fun InputField(" +
-            "value: String," +
-            "onValueChange: (String) -> Unit," +
-            "modifier: Modifier," +
-            "enabled: Boolean," +
-            "maxLines: Int," +
-            "border: BorderStroke," +
-            "innerPadding: PaddingValues," +
-            "decorationBox: @Composable (innerTextField: @Composable () -> Unit) -> Unit)",
-        imports = ["io.getstream.chat.android.compose.ui.components.composer"]
-    ),
-    level = DeprecationLevel.WARNING
-)
-@Composable
-public fun InputField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    enabled: Boolean = true,
-    modifier: Modifier = Modifier,
-    maxLines: Int = Int.MAX_VALUE,
-    border: BorderStroke = BorderStroke(1.dp, ChatTheme.colors.borders),
-    innerPadding: Dp = 8.dp,
-    decorationBox: @Composable (innerTextField: @Composable () -> Unit) -> Unit,
-) {
-    InputField(
-        value = value,
-        onValueChange = onValueChange,
-        enabled = enabled,
-        modifier = modifier,
-        maxLines = maxLines,
-        border = border,
-        innerPadding = PaddingValues(innerPadding),
-        decorationBox = decorationBox
-    )
-}
+import io.getstream.chat.android.compose.ui.util.buildAnnotatedMessageText
 
 /**
  * Custom input field that we use for our UI. It's fairly simple - shows a basic input with clipped
@@ -111,6 +62,7 @@ public fun InputField(
  * @param maxLines The number of lines that are allowed in the input, no limit by default.
  * @param border The [BorderStroke] that will appear around the input field.
  * @param innerPadding The padding inside the input field, around the label or input.
+ * @param keyboardOptions The [KeyboardOptions] to be applied to the input.
  * @param decorationBox Composable function that represents the input field decoration as it's filled with content.
  */
 @Composable
@@ -122,59 +74,72 @@ public fun InputField(
     maxLines: Int = Int.MAX_VALUE,
     border: BorderStroke = BorderStroke(1.dp, ChatTheme.colors.borders),
     innerPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+    keyboardOptions: KeyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
     decorationBox: @Composable (innerTextField: @Composable () -> Unit) -> Unit,
 ) {
-    var textFieldValueState by remember { mutableStateOf(TextFieldValue(text = value)) }
+    var textState by remember { mutableStateOf(TextFieldValue(text = value)) }
 
-    // Workaround to move cursor to the end after selecting a suggestion
-    val selection = if (textFieldValueState.isCursorAtTheEnd()) {
-        TextRange(value.length)
-    } else {
-        textFieldValueState.selection
+    if (textState.text != value) {
+        // Workaround to move cursor to the end after selecting a suggestion
+        LaunchedEffect(value) {
+            if (textState.text != value) {
+                textState = textState.copy(
+                    text = value,
+                    selection = TextRange(value.length),
+                )
+            }
+        }
     }
 
-    val textFieldValue = textFieldValueState.copy(
-        text = value,
-        selection = selection
-    )
-
+    val theme = ChatTheme.messageComposerTheme.inputField
+    val typography = ChatTheme.typography
+    val colors = ChatTheme.colors
     val description = stringResource(id = R.string.stream_compose_cd_message_input)
 
     BasicTextField(
         modifier = modifier
-            .border(border = border, shape = ChatTheme.shapes.inputField)
-            .clip(ChatTheme.shapes.inputField)
-            .background(ChatTheme.colors.inputBackground)
+            .border(border = border, shape = theme.borderShape)
+            .clip(shape = theme.borderShape)
+            .background(theme.backgroundColor)
             .padding(innerPadding)
-            .semantics { contentDescription = description },
-        value = textFieldValue,
+            .semantics { contentDescription = description }
+            .testTag("Stream_ComposerInputField"),
+        value = textState,
         onValueChange = {
-            textFieldValueState = it
+            textState = it
             if (value != it.text) {
                 onValueChange(it.text)
             }
         },
-        textStyle = ChatTheme.typography.body.copy(
-            color = ChatTheme.colors.textHighEmphasis,
-            textDirection = TextDirection.Content
-        ),
-        cursorBrush = SolidColor(ChatTheme.colors.primaryAccent),
+        visualTransformation = {
+            val styledText = buildAnnotatedMessageText(
+                text = it.text,
+                textColor = theme.textStyle.color,
+                textFontStyle = typography.body.fontStyle,
+                linkColor = colors.primaryAccent,
+                mentionsColor = colors.primaryAccent,
+            )
+            TransformedText(styledText, OffsetMapping.Identity)
+        },
+        textStyle = theme.textStyle,
+        cursorBrush = SolidColor(theme.cursorBrushColor),
         decorationBox = { innerTextField -> decorationBox(innerTextField) },
         maxLines = maxLines,
         singleLine = maxLines == 1,
-        enabled = enabled
+        enabled = enabled,
+        keyboardOptions = keyboardOptions,
     )
 }
 
-/**
- * Check if the [TextFieldValue] state represents a UI with the cursor at the end of the input.
- *
- * @return True if the cursor is at the end of the input.
- */
-private fun TextFieldValue.isCursorAtTheEnd(): Boolean {
-    val textLength = text.length
-    val selectionStart = selection.start
-    val selectionEnd = selection.end
-
-    return textLength == selectionStart && textLength == selectionEnd
+@Preview
+@Composable
+private fun InputFieldPreview() {
+    ChatTheme {
+        InputField(
+            modifier = Modifier.fillMaxWidth(),
+            value = "InputFieldPreview",
+            onValueChange = { _ -> },
+            decorationBox = { innerTextField -> innerTextField.invoke() },
+        )
+    }
 }

@@ -30,25 +30,26 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.Checkbox
-import androidx.compose.material.CheckboxDefaults
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.Text
-import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.getstream.sdk.chat.SelectFilesContract
-import com.getstream.sdk.chat.utils.MediaStringUtil
 import io.getstream.chat.android.compose.R
 import io.getstream.chat.android.compose.state.messages.attachments.AttachmentPickerItemState
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
+import io.getstream.chat.android.ui.common.contract.internal.SelectFilesContract
+import io.getstream.chat.android.ui.common.utils.MediaStringUtil
 
 /**
  * Shows the UI for files the user can pick for message attachments. Exposes the logic of selecting
@@ -68,7 +69,7 @@ public fun FilesPicker(
     itemContent: @Composable (AttachmentPickerItemState) -> Unit = {
         DefaultFilesPickerItem(
             fileItem = it,
-            onItemSelected = onItemSelected
+            onItemSelected = onItemSelected,
         )
     },
 ) {
@@ -90,12 +91,13 @@ public fun FilesPicker(
             IconButton(
                 content = {
                     Icon(
+                        modifier = Modifier.testTag("Stream_FindFilesButton"),
                         painter = painterResource(id = R.drawable.stream_compose_ic_more_files),
                         contentDescription = stringResource(id = R.string.stream_compose_send_attachment),
                         tint = ChatTheme.colors.primaryAccent,
                     )
                 },
-                onClick = { fileSelectContract.launch(Unit) }
+                onClick = { fileSelectContract.launch(Unit) },
             )
         }
 
@@ -121,11 +123,11 @@ internal fun DefaultFilesPickerItem(
             .fillMaxWidth()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = rememberRipple(),
-                onClick = { onItemSelected(fileItem) }
+                indication = ripple(),
+                onClick = { onItemSelected(fileItem) },
             )
             .padding(vertical = 8.dp, horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(contentAlignment = Alignment.Center) {
             // TODO use a Canvas maybe to draw this UI, instead of using a checkbox.
@@ -136,8 +138,9 @@ internal fun DefaultFilesPickerItem(
                     checkedColor = ChatTheme.colors.primaryAccent,
                     uncheckedColor = ChatTheme.colors.disabled,
                     checkmarkColor = Color.White,
-                    disabledColor = ChatTheme.colors.disabled,
-                    disabledIndeterminateColor = ChatTheme.colors.disabled
+                    disabledCheckedColor = ChatTheme.colors.disabled,
+                    disabledUncheckedColor = ChatTheme.colors.disabled,
+                    disabledIndeterminateColor = ChatTheme.colors.disabled,
                 ),
             )
 
@@ -153,13 +156,13 @@ internal fun DefaultFilesPickerItem(
             fileItem = fileItem,
             modifier = Modifier
                 .padding(start = 16.dp)
-                .size(size = 40.dp)
+                .size(size = 40.dp),
         )
 
         Column(
             modifier = Modifier.padding(start = 16.dp),
             horizontalAlignment = Alignment.Start,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Center,
         ) {
             Text(
                 text = fileItem.attachmentMetaData.title ?: "",

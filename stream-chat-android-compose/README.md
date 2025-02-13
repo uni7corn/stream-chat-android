@@ -5,14 +5,14 @@ This module contains reusable UI components built in Jetpack Compose, which you 
 > Not using Compose yet? Check out the [UI Components](../stream-chat-android-ui-components) library built with XML layouts!
 
 <p align="center">
-  <img alt="Channels screen" src="../docs/compose-sample-channels-light.png" width="40%">
+  <img alt="Channels screen" src="../docs/compose-sample-channels.png" width="40%">
 &nbsp; &nbsp;
-  <img alt="Messages screen" src="../docs/compose-sample-messages-light.png" width="40%">
+  <img alt="Messages screen" src="../docs/compose-sample-messages.png" width="40%">
 </p>
 
 ## Setup
 
-To start using this library in your project, see [Dependencies](https://getstream.io/chat/docs/sdk/android/basics/dependencies/), and then [Getting Started](https://getstream.io/chat/docs/sdk/android/basics/getting-started/).
+To start using this library in your project, see [Dependencies](https://getstream.io/chat/docs/sdk/android/basics/dependencies/), and then [Getting Started](https://getstream.io/chat/docs/sdk/android/client/overview/).
 
 ## Sample app
 

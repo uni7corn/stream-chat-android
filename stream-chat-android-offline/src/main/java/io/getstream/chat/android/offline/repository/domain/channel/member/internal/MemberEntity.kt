@@ -50,4 +50,22 @@ internal data class MemberEntity(
 
     /** The user's channel-level role. */
     val channelRole: String? = null,
+
+    /** If the notifications are muted for this user in the channel. */
+    val notificationsMuted: Boolean? = null,
+
+    /** The user's status. */
+    val status: String? = null,
+
+    /** The date the ban expires. */
+    var banExpires: Date? = null,
+
+    /** The date when the member pinned the channel. */
+    val pinnedAt: Date? = null,
+
+    /** The date when the member archived the channel. */
+    val archivedAt: Date? = null,
+
+    /** Map of custom fields for the member. */
+    val extraData: Map<String, Any> = emptyMap(),
 )

@@ -57,7 +57,7 @@ public class ToggleService private constructor(private val sharedPreferences: Sh
             val sp = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).also {
                 predefinedValues.entries.forEach { (key, value) ->
                     if (it.contains(key).not()) {
-                        it.edit().putBoolean(key, value).commit()
+                        it.edit().putBoolean(key, value).apply()
                     }
                 }
             }

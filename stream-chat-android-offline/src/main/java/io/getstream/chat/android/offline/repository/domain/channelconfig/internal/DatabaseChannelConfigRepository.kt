@@ -16,8 +16,8 @@
 
 package io.getstream.chat.android.offline.repository.domain.channelconfig.internal
 
-import io.getstream.chat.android.client.models.ChannelConfig
 import io.getstream.chat.android.client.persistance.repository.ChannelConfigRepository
+import io.getstream.chat.android.models.ChannelConfig
 import java.util.Collections
 
 /**
@@ -61,5 +61,9 @@ internal class DatabaseChannelConfigRepository(
     override suspend fun insertChannelConfig(config: ChannelConfig) {
         channelConfigs += config.type to config
         channelConfigDao.insert(config.toEntity())
+    }
+
+    override suspend fun clear() {
+        channelConfigDao.deleteAll()
     }
 }

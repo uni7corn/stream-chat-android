@@ -17,10 +17,11 @@
 package io.getstream.chat.android.offline.repository.domain.reaction.internal
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import io.getstream.chat.android.client.utils.SyncStatus
+import io.getstream.chat.android.models.SyncStatus
 import java.util.Date
 
 @Dao
@@ -28,17 +29,17 @@ internal interface ReactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(reactionEntity: ReactionEntity)
 
-    @Query("SELECT * FROM stream_chat_reaction WHERE id = :id")
+    @Query("SELECT * FROM $REACTION_ENTITY_TABLE_NAME WHERE id = :id")
     suspend fun selectReactionById(id: Int): ReactionEntity?
 
-    @Query("SELECT * FROM stream_chat_reaction WHERE id IN (:ids)")
+    @Query("SELECT * FROM $REACTION_ENTITY_TABLE_NAME WHERE id IN (:ids)")
     suspend fun selectReactionsByIds(ids: List<Int>): List<ReactionEntity>
 
     @Query(
-        "SELECT id FROM stream_chat_reaction " +
+        "SELECT id FROM $REACTION_ENTITY_TABLE_NAME " +
             "WHERE syncStatus = :syncStatus " +
             "ORDER BY syncStatus ASC " +
-            "LIMIT :limit"
+            "LIMIT :limit",
     )
     suspend fun selectIdsSyncStatus(syncStatus: SyncStatus, limit: Int = NO_LIMIT): List<Int>
 
@@ -46,18 +47,38 @@ internal interface ReactionDao {
         "SELECT * FROM stream_chat_reaction " +
             "WHERE syncStatus = :syncStatus " +
             "ORDER BY syncStatus ASC " +
-            "LIMIT :limit"
+            "LIMIT :limit",
     )
     suspend fun selectSyncStatus(syncStatus: SyncStatus, limit: Int = NO_LIMIT): List<ReactionEntity>
 
-    @Query("SELECT * FROM stream_chat_reaction WHERE stream_chat_reaction.type = :reactionType AND stream_chat_reaction.messageid = :messageId AND userId = :userId")
+    @Query(
+        "SELECT * FROM $REACTION_ENTITY_TABLE_NAME " +
+            "WHERE stream_chat_reaction.type = :reactionType " +
+            "AND stream_chat_reaction.messageid = :messageId " +
+            "AND userId = :userId",
+    )
     suspend fun selectUserReactionToMessage(reactionType: String, messageId: String, userId: String): ReactionEntity?
 
-    @Query("SELECT * FROM stream_chat_reaction WHERE stream_chat_reaction.messageid = :messageId AND userId = :userId")
+    @Query(
+        "SELECT * FROM $REACTION_ENTITY_TABLE_NAME " +
+            "WHERE stream_chat_reaction.messageid = :messageId " +
+            "AND userId = :userId",
+    )
     suspend fun selectUserReactionsToMessage(messageId: String, userId: String): List<ReactionEntity>
 
-    @Query("UPDATE stream_chat_reaction SET deletedAt = :deletedAt WHERE userId = :userId AND messageId = :messageId")
+    @Query(
+        "UPDATE $REACTION_ENTITY_TABLE_NAME " +
+            "SET deletedAt = :deletedAt " +
+            "WHERE userId = :userId " +
+            "AND messageId = :messageId",
+    )
     suspend fun setDeleteAt(userId: String, messageId: String, deletedAt: Date)
+
+    @Delete
+    suspend fun delete(reactionEntity: ReactionEntity)
+
+    @Query("DELETE FROM $REACTION_ENTITY_TABLE_NAME")
+    suspend fun deleteAll()
 
     private companion object {
         private const val NO_LIMIT: Int = -1

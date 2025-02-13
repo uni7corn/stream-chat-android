@@ -24,12 +24,11 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.getstream.chat.android.client.ChatClient
 import io.getstream.chat.android.client.api.models.QueryChannelsRequest
-import io.getstream.chat.android.client.api.models.QuerySort
-import io.getstream.chat.android.client.call.await
-import io.getstream.chat.android.client.models.Channel
-import io.getstream.chat.android.client.models.Filters
-import io.getstream.chat.android.client.models.Message
-import io.getstream.chat.android.livedata.utils.Event
+import io.getstream.chat.android.models.Filters
+import io.getstream.chat.android.models.Message
+import io.getstream.chat.android.models.querysort.QuerySortByField
+import io.getstream.chat.android.state.utils.Event
+import io.getstream.result.Result
 import kotlinx.coroutines.launch
 
 class GroupChatInfoMemberOptionsViewModel(
@@ -37,6 +36,10 @@ class GroupChatInfoMemberOptionsViewModel(
     private val memberId: String,
     private val chatClient: ChatClient = ChatClient.instance(),
 ) : ViewModel() {
+
+    private companion object {
+        const val DEFAULT_BAN_TIMEOUT = 60 // 1 hour
+    }
 
     private val _events = MutableLiveData<Event<UiEvent>>()
     private val _state: MediatorLiveData<State> = MediatorLiveData()
@@ -47,7 +50,7 @@ class GroupChatInfoMemberOptionsViewModel(
 
     init {
         viewModelScope.launch {
-            val currentUser = chatClient.getCurrentUser()!!
+            val currentUser = chatClient.clientState.user.value!!
 
             val result = chatClient.queryChannels(
                 request = QueryChannelsRequest(
@@ -55,24 +58,27 @@ class GroupChatInfoMemberOptionsViewModel(
                         Filters.eq("type", "messaging"),
                         Filters.distinct(listOf(memberId, currentUser.id)),
                     ),
-                    querySort = QuerySort.desc(Channel::lastUpdated),
+                    querySort = QuerySortByField.descByName("last_updated"),
                     messageLimit = 0,
                     limit = 1,
-                )
+                ),
             ).await()
 
-            _state.value = if (result.isSuccess && result.data().isNotEmpty()) {
-                State(directChannelCid = result.data().first().cid, loading = false)
-            } else {
-                State(directChannelCid = null, loading = false)
+            val directChannelCid = when (result) {
+                is Result.Success -> if (result.value.isNotEmpty()) result.value.first().cid else null
+                is Result.Failure -> null
             }
+
+            _state.value = State(directChannelCid = directChannelCid, loading = false)
         }
     }
 
     fun onAction(action: Action) {
         when (action) {
-            Action.MessageClicked -> handleMessageClicked()
+            is Action.MessageClicked -> handleMessageClicked()
             is Action.RemoveFromChannel -> removeFromChannel(action.username)
+            is Action.BanMember -> banMember(action.timeout)
+            is Action.UnbanMember -> unbanMember()
         }
     }
 
@@ -90,11 +96,27 @@ class GroupChatInfoMemberOptionsViewModel(
     private fun removeFromChannel(username: String) {
         viewModelScope.launch {
             val message = Message(text = "$username has been removed from this channel")
-            val result = chatClient.channel(cid).removeMembers(listOf(memberId), message).await()
-            if (result.isSuccess) {
-                _events.value = Event(UiEvent.Dismiss)
-            } else {
-                _errorEvents.postValue(Event(ErrorEvent.RemoveMemberError))
+            when (chatClient.channel(cid).removeMembers(listOf(memberId), message).await()) {
+                is Result.Success -> _events.value = Event(UiEvent.Dismiss)
+                is Result.Failure -> _errorEvents.postValue(Event(ErrorEvent.RemoveMemberError))
+            }
+        }
+    }
+
+    private fun banMember(timeout: Int? = null) {
+        viewModelScope.launch {
+            when (chatClient.channel(cid).banUser(memberId, reason = null, timeout = timeout).await()) {
+                is Result.Success -> _events.value = Event(UiEvent.Dismiss)
+                is Result.Failure -> _errorEvents.postValue(Event(ErrorEvent.BanMemberError))
+            }
+        }
+    }
+
+    private fun unbanMember() {
+        viewModelScope.launch {
+            when (chatClient.channel(cid).unbanUser(memberId).await()) {
+                is Result.Success -> _events.value = Event(UiEvent.Dismiss)
+                is Result.Failure -> _errorEvents.postValue(Event(ErrorEvent.UnbanMemberError))
             }
         }
     }
@@ -102,18 +124,22 @@ class GroupChatInfoMemberOptionsViewModel(
     data class State(val directChannelCid: String?, val loading: Boolean)
 
     sealed class Action {
-        object MessageClicked : Action()
+        data object MessageClicked : Action()
         data class RemoveFromChannel(val username: String) : Action()
+        data class BanMember(val timeout: Int? = DEFAULT_BAN_TIMEOUT) : Action()
+        data object UnbanMember : Action()
     }
 
     sealed class UiEvent {
-        object Dismiss : UiEvent()
+        data object Dismiss : UiEvent()
         data class RedirectToChat(val cid: String) : UiEvent()
-        object RedirectToChatPreview : UiEvent()
+        data object RedirectToChatPreview : UiEvent()
     }
 
     sealed class ErrorEvent {
-        object RemoveMemberError : ErrorEvent()
+        data object RemoveMemberError : ErrorEvent()
+        data object BanMemberError : ErrorEvent()
+        data object UnbanMemberError : ErrorEvent()
     }
 }
 

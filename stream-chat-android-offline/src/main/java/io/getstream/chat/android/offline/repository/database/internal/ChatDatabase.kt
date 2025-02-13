@@ -22,15 +22,22 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.sqlite.db.SupportSQLiteDatabase
+import io.getstream.chat.android.offline.repository.database.converter.internal.AnswerConverter
 import io.getstream.chat.android.offline.repository.database.converter.internal.DateConverter
 import io.getstream.chat.android.offline.repository.database.converter.internal.ExtraDataConverter
 import io.getstream.chat.android.offline.repository.database.converter.internal.FilterObjectConverter
 import io.getstream.chat.android.offline.repository.database.converter.internal.ListConverter
 import io.getstream.chat.android.offline.repository.database.converter.internal.MapConverter
 import io.getstream.chat.android.offline.repository.database.converter.internal.MemberConverter
+import io.getstream.chat.android.offline.repository.database.converter.internal.ModerationConverter
+import io.getstream.chat.android.offline.repository.database.converter.internal.ModerationDetailsConverter
+import io.getstream.chat.android.offline.repository.database.converter.internal.OptionConverter
+import io.getstream.chat.android.offline.repository.database.converter.internal.PrivacySettingsConverter
 import io.getstream.chat.android.offline.repository.database.converter.internal.QuerySortConverter
+import io.getstream.chat.android.offline.repository.database.converter.internal.ReactionGroupConverter
 import io.getstream.chat.android.offline.repository.database.converter.internal.SetConverter
 import io.getstream.chat.android.offline.repository.database.converter.internal.SyncStatusConverter
+import io.getstream.chat.android.offline.repository.database.converter.internal.VoteConverter
 import io.getstream.chat.android.offline.repository.domain.channel.internal.ChannelDao
 import io.getstream.chat.android.offline.repository.domain.channel.internal.ChannelEntity
 import io.getstream.chat.android.offline.repository.domain.channelconfig.internal.ChannelConfigDao
@@ -38,14 +45,23 @@ import io.getstream.chat.android.offline.repository.domain.channelconfig.interna
 import io.getstream.chat.android.offline.repository.domain.channelconfig.internal.CommandInnerEntity
 import io.getstream.chat.android.offline.repository.domain.message.attachment.internal.AttachmentDao
 import io.getstream.chat.android.offline.repository.domain.message.attachment.internal.AttachmentEntity
+import io.getstream.chat.android.offline.repository.domain.message.attachment.internal.ReplyAttachmentEntity
 import io.getstream.chat.android.offline.repository.domain.message.internal.MessageDao
 import io.getstream.chat.android.offline.repository.domain.message.internal.MessageInnerEntity
+import io.getstream.chat.android.offline.repository.domain.message.internal.PollDao
+import io.getstream.chat.android.offline.repository.domain.message.internal.PollEntity
+import io.getstream.chat.android.offline.repository.domain.message.internal.ReplyMessageDao
+import io.getstream.chat.android.offline.repository.domain.message.internal.ReplyMessageInnerEntity
 import io.getstream.chat.android.offline.repository.domain.queryChannels.internal.QueryChannelsDao
 import io.getstream.chat.android.offline.repository.domain.queryChannels.internal.QueryChannelsEntity
 import io.getstream.chat.android.offline.repository.domain.reaction.internal.ReactionDao
 import io.getstream.chat.android.offline.repository.domain.reaction.internal.ReactionEntity
 import io.getstream.chat.android.offline.repository.domain.syncState.internal.SyncStateDao
 import io.getstream.chat.android.offline.repository.domain.syncState.internal.SyncStateEntity
+import io.getstream.chat.android.offline.repository.domain.threads.internal.ThreadDao
+import io.getstream.chat.android.offline.repository.domain.threads.internal.ThreadEntity
+import io.getstream.chat.android.offline.repository.domain.threads.internal.ThreadOrderDao
+import io.getstream.chat.android.offline.repository.domain.threads.internal.ThreadOrderEntity
 import io.getstream.chat.android.offline.repository.domain.user.internal.UserDao
 import io.getstream.chat.android.offline.repository.domain.user.internal.UserEntity
 
@@ -53,18 +69,24 @@ import io.getstream.chat.android.offline.repository.domain.user.internal.UserEnt
     entities = [
         QueryChannelsEntity::class,
         MessageInnerEntity::class,
+        ReplyMessageInnerEntity::class,
         AttachmentEntity::class,
+        ReplyAttachmentEntity::class,
         UserEntity::class,
         ReactionEntity::class,
         ChannelEntity::class,
         ChannelConfigInnerEntity::class,
         CommandInnerEntity::class,
         SyncStateEntity::class,
+        PollEntity::class,
+        ThreadEntity::class,
+        ThreadOrderEntity::class,
     ],
-    version = 57,
-    exportSchema = false
+    version = 82,
+    exportSchema = false,
 )
 @TypeConverters(
+    AnswerConverter::class,
     FilterObjectConverter::class,
     ListConverter::class,
     MapConverter::class,
@@ -73,17 +95,27 @@ import io.getstream.chat.android.offline.repository.domain.user.internal.UserEnt
     SetConverter::class,
     SyncStatusConverter::class,
     DateConverter::class,
-    MemberConverter::class
+    MemberConverter::class,
+    ModerationDetailsConverter::class,
+    ModerationConverter::class,
+    ReactionGroupConverter::class,
+    PrivacySettingsConverter::class,
+    OptionConverter::class,
+    VoteConverter::class,
 )
 internal abstract class ChatDatabase : RoomDatabase() {
     abstract fun queryChannelsDao(): QueryChannelsDao
     abstract fun userDao(): UserDao
     abstract fun reactionDao(): ReactionDao
     abstract fun messageDao(): MessageDao
+    abstract fun replyMessageDao(): ReplyMessageDao
     abstract fun channelStateDao(): ChannelDao
     abstract fun channelConfigDao(): ChannelConfigDao
     abstract fun syncStateDao(): SyncStateDao
     abstract fun attachmentDao(): AttachmentDao
+    abstract fun pollDao(): PollDao
+    abstract fun threadDao(): ThreadDao
+    abstract fun threadOrderDao(): ThreadOrderDao
 
     companion object {
         @Volatile
@@ -95,14 +127,14 @@ internal abstract class ChatDatabase : RoomDatabase() {
                     val db = Room.databaseBuilder(
                         context.applicationContext,
                         ChatDatabase::class.java,
-                        "stream_chat_database_$userId"
+                        "stream_chat_database_$userId",
                     ).fallbackToDestructiveMigration()
                         .addCallback(
                             object : Callback() {
                                 override fun onOpen(db: SupportSQLiteDatabase) {
                                     db.execSQL("PRAGMA synchronous = 1")
                                 }
-                            }
+                            },
                         )
                         .build()
                     INSTANCES[userId] = db

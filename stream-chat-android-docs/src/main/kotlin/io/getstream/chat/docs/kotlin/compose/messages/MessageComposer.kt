@@ -3,6 +3,7 @@
 package io.getstream.chat.docs.kotlin.compose.messages
 
 import android.os.Bundle
+import android.os.PersistableBundle
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -16,10 +17,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.material.Icon
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Text
-import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -41,6 +44,7 @@ import io.getstream.chat.docs.R
 private object MessageComposerUsageSnippet {
 
     class MyActivity : AppCompatActivity() {
+
         val factory by lazy {
             MessagesViewModelFactory(
                 context = this,
@@ -94,6 +98,7 @@ private object MessageComposerUsageSnippet {
 private object MessageComposerHandlingActionsSnippet {
 
     class MyActivity : AppCompatActivity() {
+
         val factory by lazy {
             MessagesViewModelFactory(
                 context = this,
@@ -127,11 +132,40 @@ private object MessageComposerHandlingActionsSnippet {
 }
 
 /**
+ * [Handling Typing Updates](https://getstream.io/chat/docs/sdk/android/compose/message-components/message-composer/#handling-actions)
+ */
+private object HandlingTypingUpdatesSnippet {
+
+    class MyActivity : AppCompatActivity() {
+        val factory by lazy {
+            MessagesViewModelFactory(
+                context = this,
+                channelId = "messaging:123",
+            )
+        }
+
+        val composerViewModel = factory.create(MessageComposerViewModel::class.java)
+
+        override fun onCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
+            super.onCreate(savedInstanceState, persistentState)
+
+            // This needs to be commented out or the docs module build will fail
+            /*
+            composerViewModel.setTypingUpdatesBuffer(
+                // Your custom implementation of TypingUpdatesBuffer
+            )
+            */
+        }
+    }
+}
+
+/**
  * [Customization](https://getstream.io/chat/docs/sdk/android/compose/message-components/message-composer/#customization)
  */
 private object MessageComposerCustomizationSnippet {
 
     class MyActivity : AppCompatActivity() {
+
         val factory by lazy {
             MessagesViewModelFactory(
                 context = this,
@@ -174,7 +208,7 @@ private object MessageComposerCustomizationSnippet {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    painter = painterResource(R.drawable.ic_keyboard),
+                                    imageVector = Icons.Default.Email,
                                     contentDescription = null
                                 )
 
@@ -191,13 +225,14 @@ private object MessageComposerCustomizationSnippet {
                                     .size(24.dp)
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
-                                        indication = rememberRipple()
+                                        indication = ripple()
                                     ) {
                                         val state = composerViewModel.messageComposerState.value
 
                                         composerViewModel.sendMessage(
                                             composerViewModel.buildNewMessage(
-                                                state.inputValue, state.attachments
+                                                state.inputValue,
+                                                state.attachments
                                             )
                                         )
                                     },

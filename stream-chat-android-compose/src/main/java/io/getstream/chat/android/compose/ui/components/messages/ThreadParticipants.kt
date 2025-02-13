@@ -23,14 +23,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import io.getstream.chat.android.client.models.User
-import io.getstream.chat.android.client.models.initials
 import io.getstream.chat.android.compose.state.messages.MessageAlignment
-import io.getstream.chat.android.compose.ui.components.avatar.Avatar
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
+import io.getstream.chat.android.models.User
+import io.getstream.chat.android.ui.common.utils.extensions.initials
 
 /**
  * Represents a number of participants in the thread.
@@ -78,14 +79,20 @@ public fun ThreadParticipants(
                 index + 1
             }.toFloat()
 
-            Avatar(
+            ChatTheme.componentFactory.Avatar(
                 modifier = itemPadding
                     .zIndex(itemPosition)
                     .size(itemSize)
-                    .border(border = borderStroke, shape = ChatTheme.shapes.avatar),
+                    .border(border = borderStroke, shape = ChatTheme.shapes.avatar)
+                    .testTag("Stream_ThreadParticipantAvatar"),
                 imageUrl = user.image,
                 initials = user.initials,
+                shape = ChatTheme.shapes.avatar,
                 textStyle = ChatTheme.typography.captionBold.copy(fontSize = 7.sp),
+                placeholderPainter = null,
+                contentDescription = user.name,
+                initialsAvatarOffset = DpOffset.Zero,
+                onClick = null,
             )
         }
     }

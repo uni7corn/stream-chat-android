@@ -26,19 +26,20 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.getstream.sdk.chat.utils.MediaStringUtil
-import io.getstream.chat.android.client.models.Attachment
 import io.getstream.chat.android.compose.ui.components.CancelIcon
 import io.getstream.chat.android.compose.ui.components.composer.MessageInput
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
+import io.getstream.chat.android.models.Attachment
+import io.getstream.chat.android.ui.common.utils.MediaStringUtil
 
 /**
  * UI for currently selected file attachments, within the [MessageInput].
@@ -55,23 +56,24 @@ public fun FileAttachmentPreviewContent(
 ) {
     LazyRow(
         modifier = modifier
-            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
+            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+            .testTag("Stream_FileAttachmentPreviewContent"),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.Start)
+        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.Start),
     ) {
         items(attachments) { attachment ->
             Surface(
                 modifier = Modifier.padding(1.dp),
                 color = ChatTheme.colors.appBackground,
                 shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, ChatTheme.colors.borders)
+                border = BorderStroke(1.dp, ChatTheme.colors.borders),
             ) {
                 Row(
                     modifier = Modifier
                         .width(200.dp)
                         .height(50.dp)
                         .padding(vertical = 8.dp, horizontal = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     FileAttachmentImage(attachment = attachment)
 
@@ -80,14 +82,15 @@ public fun FileAttachmentPreviewContent(
                             .weight(1f)
                             .padding(horizontal = 8.dp),
                         horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.Center
+                        verticalArrangement = Arrangement.Center,
                     ) {
                         Text(
+                            modifier = Modifier.testTag("Stream_FileNameInPreview"),
                             text = attachment.title ?: attachment.name ?: "",
                             style = ChatTheme.typography.bodyBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            color = ChatTheme.colors.textHighEmphasis
+                            color = ChatTheme.colors.textHighEmphasis,
                         )
 
                         val fileSize = attachment.upload?.length()?.let { length ->
@@ -95,16 +98,17 @@ public fun FileAttachmentPreviewContent(
                         }
                         if (fileSize != null) {
                             Text(
+                                modifier = Modifier.testTag("Stream_FileSizeInPreview"),
                                 text = fileSize,
                                 style = ChatTheme.typography.footnote,
-                                color = ChatTheme.colors.textLowEmphasis
+                                color = ChatTheme.colors.textLowEmphasis,
                             )
                         }
                     }
 
                     CancelIcon(
-                        modifier = Modifier.padding(4.dp),
-                        onClick = { onAttachmentRemoved(attachment) }
+                        modifier = Modifier.padding(4.dp).testTag("Stream_AttachmentCancelIcon"),
+                        onClick = { onAttachmentRemoved(attachment) },
                     )
                 }
             }

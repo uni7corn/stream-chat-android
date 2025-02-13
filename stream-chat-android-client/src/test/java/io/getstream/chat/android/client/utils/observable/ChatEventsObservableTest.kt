@@ -16,78 +16,72 @@
 
 package io.getstream.chat.android.client.utils.observable
 
+import androidx.lifecycle.testing.TestLifecycleOwner
+import io.getstream.chat.android.client.StreamLifecycleObserver
 import io.getstream.chat.android.client.events.ChatEvent
-import io.getstream.chat.android.client.events.ConnectedEvent
-import io.getstream.chat.android.client.events.DisconnectedEvent
-import io.getstream.chat.android.client.events.NewMessageEvent
 import io.getstream.chat.android.client.events.UnknownEvent
-import io.getstream.chat.android.client.models.EventType
-import io.getstream.chat.android.client.models.Message
-import io.getstream.chat.android.client.models.User
-import io.getstream.chat.android.test.TestCoroutineRule
+import io.getstream.chat.android.client.network.NetworkStateProvider
+import io.getstream.chat.android.client.parser2.adapters.internal.StreamDateFormatter
+import io.getstream.chat.android.client.scope.ClientTestScope
+import io.getstream.chat.android.client.scope.UserTestScope
+import io.getstream.chat.android.client.socket.FakeChatSocket
+import io.getstream.chat.android.client.token.FakeTokenManager
+import io.getstream.chat.android.randomString
+import io.getstream.chat.android.randomUser
+import io.getstream.chat.android.test.TestCoroutineExtension
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import org.amshove.kluent.shouldBeEqualTo
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import java.util.Date
 
+@OptIn(ExperimentalCoroutinesApi::class)
 internal class ChatEventsObservableTest {
 
-    @get:Rule
-    val testCoroutines: TestCoroutineRule = TestCoroutineRule()
+    companion object {
+        @JvmField
+        @RegisterExtension
+        val testCoroutines = TestCoroutineExtension()
+    }
 
-    private lateinit var socket: FakeSocket
     private lateinit var observable: ChatEventsObservable
     private lateinit var result: MutableList<ChatEvent>
+    private val streamDateFormatter = StreamDateFormatter()
+    private lateinit var fakeChatSocket: FakeChatSocket
 
-    @Before
+    @BeforeEach
     fun before() {
-        socket = FakeSocket()
-        observable = ChatEventsObservable(socket, mock(), testCoroutines.scope)
         result = mutableListOf()
-    }
-
-    @Test
-    fun oneEventDelivery() {
-        val event = ConnectedEvent(EventType.HEALTH_CHECK, Date(), User(), "")
-        observable.subscribe { result.add(it) }
-
-        socket.sendEvent(event)
-
-        result shouldBeEqualTo listOf(event)
-    }
-
-    @Test
-    fun multipleEventsDelivery() {
-        val eventA = ConnectedEvent(EventType.HEALTH_CHECK, Date(), User(), "")
-        val eventB = NewMessageEvent(
-            EventType.MESSAGE_NEW,
-            Date(),
-            User(),
-            "type:id",
-            "type",
-            "id",
-            Message(),
-            0,
-            0,
-            0
+        val clientScope = ClientTestScope(testCoroutines.scope)
+        val userScope = UserTestScope(clientScope)
+        val lifecycleOwner = TestLifecycleOwner(coroutineDispatcher = testCoroutines.dispatcher)
+        val lifecycleObserver = StreamLifecycleObserver(userScope, lifecycleOwner.lifecycle)
+        val tokenManager = FakeTokenManager("")
+        val networkStateProvider: NetworkStateProvider = mock()
+        whenever(networkStateProvider.isConnected()) doReturn true
+        fakeChatSocket = FakeChatSocket(
+            userScope = userScope,
+            lifecycleObserver = lifecycleObserver,
+            tokenManager = tokenManager,
+            networkStateProvider = networkStateProvider,
         )
-        val eventC = DisconnectedEvent(EventType.CONNECTION_DISCONNECTED, Date())
-        observable.subscribe { result.add(it) }
-
-        socket.sendEvent(eventA)
-        socket.sendEvent(eventB)
-        socket.sendEvent(eventC)
-
-        result shouldBeEqualTo listOf(eventA, eventB, eventC)
+        userScope.launch { fakeChatSocket.prepareAliveConnection(randomUser(), randomString()) }
+        observable = ChatEventsObservable(mock(), testCoroutines.scope, fakeChatSocket)
     }
 
     @Test
     fun filtering() {
-        val eventA = UnknownEvent("a", Date(), null, emptyMap<Any, Any>())
-        val eventB = UnknownEvent("b", Date(), null, mapOf<Any, Any>("cid" to "myCid"))
-        val eventC = UnknownEvent("c", Date(), null, emptyMap<Any, Any>())
+        val createdAt = Date()
+        val rawCreatedAt = streamDateFormatter.format(createdAt)
+
+        val eventA = UnknownEvent("a", createdAt, rawCreatedAt, null, emptyMap<Any, Any>())
+        val eventB = UnknownEvent("b", createdAt, rawCreatedAt, null, mapOf<Any, Any>("cid" to "myCid"))
+        val eventC = UnknownEvent("c", createdAt, rawCreatedAt, null, emptyMap<Any, Any>())
 
         val filter: (ChatEvent) -> Boolean = {
             it.type == "b" && (it as? UnknownEvent)?.rawData?.get("cid") == "myCid"
@@ -96,27 +90,30 @@ internal class ChatEventsObservableTest {
             result.add(it)
         }
 
-        socket.sendEvent(eventA)
-        socket.sendEvent(eventB)
-        socket.sendEvent(eventC)
+        fakeChatSocket.mockEventReceived(eventA)
+        fakeChatSocket.mockEventReceived(eventB)
+        fakeChatSocket.mockEventReceived(eventC)
 
         result shouldBeEqualTo listOf(eventB)
     }
 
     @Test
     fun unsubscription() {
-        val eventA = UnknownEvent("a", Date(), null, emptyMap<Any, Any>())
-        val eventB = UnknownEvent("b", Date(), null, emptyMap<Any, Any>())
-        val eventC = UnknownEvent("c", Date(), null, emptyMap<Any, Any>())
+        val createdAt = Date()
+        val rawCreatedAt = streamDateFormatter.format(createdAt)
+
+        val eventA = UnknownEvent("a", createdAt, rawCreatedAt, null, emptyMap<Any, Any>())
+        val eventB = UnknownEvent("b", createdAt, rawCreatedAt, null, emptyMap<Any, Any>())
+        val eventC = UnknownEvent("c", createdAt, rawCreatedAt, null, emptyMap<Any, Any>())
 
         val subscription = observable.subscribe { result.add(it) }
 
-        socket.sendEvent(eventA)
-        socket.sendEvent(eventB)
+        fakeChatSocket.mockEventReceived(eventA)
+        fakeChatSocket.mockEventReceived(eventB)
 
         subscription.dispose()
 
-        socket.sendEvent(eventC)
+        fakeChatSocket.mockEventReceived(eventC)
 
         result shouldBeEqualTo listOf(eventA, eventB)
     }

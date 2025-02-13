@@ -16,6 +16,9 @@
 
 package io.getstream.chat.android.compose.ui.attachments.content
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,38 +27,59 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.getstream.sdk.chat.utils.MediaStringUtil
-import io.getstream.chat.android.client.models.Attachment
-import io.getstream.chat.android.client.models.Attachment.UploadState.Idle
-import io.getstream.chat.android.client.models.Attachment.UploadState.InProgress
 import io.getstream.chat.android.compose.R
 import io.getstream.chat.android.compose.state.messages.attachments.AttachmentState
+import io.getstream.chat.android.compose.ui.attachments.preview.handler.AttachmentPreviewHandler
 import io.getstream.chat.android.compose.ui.components.LoadingIndicator
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
+import io.getstream.chat.android.models.Attachment
+import io.getstream.chat.android.models.Attachment.UploadState.Idle
+import io.getstream.chat.android.models.Attachment.UploadState.InProgress
+import io.getstream.chat.android.ui.common.utils.MediaStringUtil
+import io.getstream.chat.android.uiutils.extension.isUploading
 
 /**
  * Represents the content when files are being uploaded.
  *
  * @param attachmentState The state of this attachment.
+ * @param modifier Modifier for styling.
+ * @param onItemClick Lambda called when an item gets clicked.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 public fun FileUploadContent(
     attachmentState: AttachmentState,
     modifier: Modifier = Modifier,
+    onItemClick: (Attachment, List<AttachmentPreviewHandler>) -> Unit = ::onFileUploadContentItemClick,
 ) {
     val message = attachmentState.message
+    val previewHandlers = ChatTheme.attachmentPreviewHandlers
 
     Column(modifier = modifier) {
         for (attachment in message.attachments) {
-            FileUploadItem(attachment = attachment)
+            FileUploadItem(
+                modifier = Modifier
+                    .padding(2.dp)
+                    .fillMaxWidth()
+                    .combinedClickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                        onClick = {
+                            onItemClick(attachment, previewHandlers)
+                        },
+                        onLongClick = { },
+                    ),
+                attachment = attachment,
+            )
         }
     }
 }
@@ -64,22 +88,24 @@ public fun FileUploadContent(
  * Represents each uploading item, with its upload progress.
  *
  * @param attachment The attachment that's being uploaded.
+ * @param modifier Modifier for styling.
  */
 @Composable
-public fun FileUploadItem(attachment: Attachment) {
+public fun FileUploadItem(
+    attachment: Attachment,
+    modifier: Modifier = Modifier,
+) {
     Surface(
-        modifier = Modifier
-            .padding(2.dp)
-            .fillMaxWidth(),
+        modifier = modifier,
         color = ChatTheme.colors.appBackground,
-        shape = ChatTheme.shapes.attachment
+        shape = ChatTheme.shapes.attachment,
     ) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .height(50.dp)
                 .padding(vertical = 8.dp, horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             FileAttachmentImage(attachment = attachment)
 
@@ -87,14 +113,14 @@ public fun FileUploadItem(attachment: Attachment) {
                 modifier = Modifier
                     .padding(start = 16.dp, end = 8.dp),
                 horizontalAlignment = Alignment.Start,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Center,
             ) {
                 Text(
                     text = attachment.title ?: attachment.name ?: "",
                     style = ChatTheme.typography.bodyBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = ChatTheme.colors.textHighEmphasis
+                    color = ChatTheme.colors.textHighEmphasis,
                 )
 
                 when (val uploadState = attachment.uploadState) {
@@ -108,7 +134,7 @@ public fun FileUploadItem(attachment: Attachment) {
                         Text(
                             text = MediaStringUtil.convertFileSizeByteCount(attachment.upload?.length() ?: 0L),
                             style = ChatTheme.typography.footnote,
-                            color = ChatTheme.colors.textLowEmphasis
+                            color = ChatTheme.colors.textLowEmphasis,
                         )
                     }
                 }
@@ -141,7 +167,25 @@ private fun ProgressInfo(uploadedBytes: Long, totalBytes: Long) {
                 MediaStringUtil.convertFileSizeByteCount(totalBytes),
             ),
             style = ChatTheme.typography.footnote,
-            color = ChatTheme.colors.textLowEmphasis
+            color = ChatTheme.colors.textLowEmphasis,
         )
+    }
+}
+
+/**
+ * Handles clicks on individual file upload content items.
+ *
+ * @param attachment The attachment being clicked.
+ * @param previewHandlers A list of preview handlers from which a suitable handler
+ * will be looked for.
+ */
+internal fun onFileUploadContentItemClick(
+    attachment: Attachment,
+    previewHandlers: List<AttachmentPreviewHandler>,
+) {
+    if (!attachment.isUploading()) {
+        previewHandlers
+            .firstOrNull { it.canHandle(attachment) }
+            ?.handleAttachmentPreview(attachment)
     }
 }

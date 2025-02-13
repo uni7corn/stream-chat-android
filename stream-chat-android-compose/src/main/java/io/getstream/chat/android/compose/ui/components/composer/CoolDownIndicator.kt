@@ -21,7 +21,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Text
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,13 +46,13 @@ public fun CoolDownIndicator(
             .size(48.dp)
             .padding(12.dp)
             .background(shape = RoundedCornerShape(24.dp), color = ChatTheme.colors.disabled),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = coolDownTime.toString(),
             color = Color.White,
             textAlign = TextAlign.Center,
-            style = ChatTheme.typography.bodyBold
+            style = ChatTheme.typography.bodyBold,
         )
     }
 }

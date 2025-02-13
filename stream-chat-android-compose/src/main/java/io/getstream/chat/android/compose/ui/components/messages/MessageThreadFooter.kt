@@ -18,13 +18,14 @@ package io.getstream.chat.android.compose.ui.components.messages
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.Text
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import io.getstream.chat.android.client.models.User
 import io.getstream.chat.android.compose.state.messages.MessageAlignment
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
+import io.getstream.chat.android.models.User
 
 /**
  * Shows a row of participants in the message thread, if they exist.
@@ -47,14 +48,15 @@ public fun MessageThreadFooter(
                 modifier = Modifier
                     .padding(end = 4.dp),
                 participants = participants,
-                alignment = messageAlignment
+                alignment = messageAlignment,
             )
         }
 
         Text(
+            modifier = Modifier.testTag("Stream_ThreadRepliesLabel"),
             text = text,
             style = ChatTheme.typography.footnoteBold,
-            color = ChatTheme.colors.primaryAccent
+            color = ChatTheme.colors.primaryAccent,
         )
 
         if (messageAlignment == MessageAlignment.End) {
@@ -62,7 +64,7 @@ public fun MessageThreadFooter(
                 modifier = Modifier
                     .padding(start = 4.dp),
                 participants = participants,
-                alignment = messageAlignment
+                alignment = messageAlignment,
             )
         }
     }

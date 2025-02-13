@@ -16,11 +16,12 @@
 
 package io.getstream.chat.android.client.socket
 
+import io.getstream.chat.android.PrivacySettings
 import io.getstream.chat.android.client.ChatClient
-import io.getstream.chat.android.client.logger.ChatLogger
-import io.getstream.chat.android.client.models.User
 import io.getstream.chat.android.client.parser.ChatParser
 import io.getstream.chat.android.client.token.TokenManager
+import io.getstream.chat.android.models.User
+import io.getstream.log.taggedLogger
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.UnsupportedEncodingException
@@ -32,19 +33,20 @@ internal class SocketFactory(
     private val tokenManager: TokenManager,
     private val httpClient: OkHttpClient = OkHttpClient(),
 ) {
-
-    private val logger = ChatLogger.get(SocketFactory::class.java.simpleName)
+    private val logger by taggedLogger("Chat:SocketFactory")
 
     @Throws(UnsupportedEncodingException::class)
-    fun createSocket(eventsParser: EventsParser, connectionConf: ConnectionConf): Socket {
-        val url = buildUrl(connectionConf)
-        val request = Request.Builder().url(url).build()
-        val newWebSocket = httpClient.newWebSocket(request, eventsParser)
-
-        logger.logI("new web socket: $url")
-
-        return Socket(newWebSocket, parser)
+    fun createSocket(connectionConf: ConnectionConf): StreamWebSocket {
+        val request = buildRequest(connectionConf)
+        logger.i { "new web socket: ${request.url}" }
+        return StreamWebSocket(parser) { httpClient.newWebSocket(request, it) }
     }
+
+    @Throws(UnsupportedEncodingException::class)
+    private fun buildRequest(connectionConf: ConnectionConf): Request =
+        Request.Builder()
+            .url(buildUrl(connectionConf))
+            .build()
 
     @Suppress("TooGenericExceptionCaught")
     @Throws(UnsupportedEncodingException::class)
@@ -57,10 +59,12 @@ internal class SocketFactory(
                 is ConnectionConf.AnonymousConnectionConf -> "$baseWsUrl&stream-auth-type=anonymous"
                 is ConnectionConf.UserConnectionConf -> {
                     val token = tokenManager.getToken()
+                        .takeUnless { connectionConf.isReconnection }
+                        ?: tokenManager.loadSync()
                     "$baseWsUrl&authorization=$token&stream-auth-type=jwt"
                 }
             }
-        } catch (_: Throwable) {
+        } catch (_: UnsupportedEncodingException) {
             throw UnsupportedEncodingException("Unable to encode user details json: $json")
         }
     }
@@ -68,7 +72,7 @@ internal class SocketFactory(
     private fun buildUserDetailJson(connectionConf: ConnectionConf): String {
         val data = mapOf(
             "user_details" to connectionConf.reduceUserDetails(),
-            "user_id" to connectionConf.user.id,
+            "user_id" to connectionConf.id,
             "server_determines_connection_id" to true,
             "X-Stream-Client" to ChatClient.buildSdkTrackingHeaders(),
         )
@@ -81,16 +85,38 @@ internal class SocketFactory(
      *
      * @return A map of User's properties to update.
      */
-    private fun ConnectionConf.reduceUserDetails(): Map<String, Any> = mutableMapOf<String, Any>("id" to user.id)
+    private fun ConnectionConf.reduceUserDetails(): Map<String, Any> = mutableMapOf<String, Any>("id" to id)
         .apply {
             if (!isReconnection) {
-                put("role", user.role)
-                put("banned", user.banned)
-                put("invisible", user.invisible)
-                put("teams", user.teams)
+                if (user.role.isNotBlank()) put("role", user.role)
+                user.banned?.also { put("banned", it) }
+                user.invisible?.also { put("invisible", it) }
+                user.privacySettings?.also { put("privacy_settings", it.reducePrivacySettings()) }
+                if (user.teams.isNotEmpty()) put("teams", user.teams)
+                if (user.language.isNotBlank()) put("language", user.language)
                 if (user.image.isNotBlank()) put("image", user.image)
                 if (user.name.isNotBlank()) put("name", user.name)
                 putAll(user.extraData)
+            }
+        }
+
+    private fun PrivacySettings.reducePrivacySettings(): Map<String, Any> = mutableMapOf<String, Any>()
+        .apply {
+            typingIndicators?.also {
+                put(
+                    "typing_indicators",
+                    mapOf<String, Any>(
+                        "enabled" to it.enabled,
+                    ),
+                )
+            }
+            readReceipts?.also {
+                put(
+                    "read_receipts",
+                    mapOf<String, Any>(
+                        "enabled" to it.enabled,
+                    ),
+                )
             }
         }
 
@@ -114,5 +140,11 @@ internal class SocketFactory(
         ) : ConnectionConf()
 
         internal fun asReconnectionConf(): ConnectionConf = this.also { isReconnection = true }
+
+        internal val id: String
+            get() = when (this) {
+                is AnonymousConnectionConf -> user.id.replace("!", "")
+                is UserConnectionConf -> user.id
+            }
     }
 }

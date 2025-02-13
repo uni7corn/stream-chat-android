@@ -24,7 +24,7 @@ import io.getstream.chat.android.client.api2.model.dto.DownstreamMemberDto
 import io.getstream.chat.android.client.api2.model.dto.UpstreamChannelDto
 import io.getstream.chat.android.client.api2.model.dto.UpstreamChannelUserRead
 import io.getstream.chat.android.client.api2.model.dto.UpstreamMemberDto
-import io.getstream.chat.android.client.models.ChannelCapabilities
+import io.getstream.chat.android.models.ChannelCapabilities
 import org.intellij.lang.annotations.Language
 import java.util.Date
 
@@ -47,6 +47,8 @@ internal object ChannelDtoTestData {
           "url_enrichment": false,
           "custom_events": false,
           "push_notifications": true,
+          "skip_last_msg_update_for_system_msgs": false,
+          "polls": true,
           "message_retention": "retention",
           "max_message_length": 500,
           "automod": "none",
@@ -78,6 +80,8 @@ internal object ChannelDtoTestData {
         url_enrichment = false,
         custom_events = false,
         push_notifications = true,
+        skip_last_msg_update_for_system_msgs = false,
+        polls = true,
         message_retention = "retention",
         max_message_length = 500,
         automod = "none",
@@ -89,7 +93,7 @@ internal object ChannelDtoTestData {
                 description = "gif",
                 args = "empty",
                 set = "none",
-            )
+            ),
         ),
     )
 
@@ -112,14 +116,18 @@ internal object ChannelDtoTestData {
           "members": [
            {
             "user": ${UserDtoTestData.downstreamJson},
-            "role": "owner",
             "created_at": "2020-06-10T11:04:31.0Z",
             "updated_at": "2020-06-10T11:04:31.588Z",
             "invited": true,
             "invite_accepted_at": "2020-06-10T11:04:31.588Z",
             "shadow_banned": false,
             "banned": false,
-            "channel_role": "member"
+            "channel_role": "member",
+            "notifications_muted": false,
+            "status": "member",
+            "ban_expires" : "2021-03-08T15:42:31.355Z",
+            "pinned_at": "2020-06-10T11:04:31.588Z",
+            "archived_at": "2020-06-10T11:04:31.588Z"
            }
           ],
           "watchers": [${UserDtoTestData.downstreamJson}],
@@ -127,7 +135,8 @@ internal object ChannelDtoTestData {
            {
             "user": ${UserDtoTestData.downstreamJson},
             "last_read": "2020-06-10T11:04:31.0Z",
-            "unread_messages": 1
+            "unread_messages": 1,
+            "last_read_message_id": "messageId"
            }
           ],
           "config": $configJson,
@@ -139,14 +148,15 @@ internal object ChannelDtoTestData {
           "own_capabilities": ["connect-events", "pin-message"],
           "membership": {
             "user": ${UserDtoTestData.downstreamJson},
-            "role": "owner",
             "created_at": "2020-06-10T11:04:31.0Z",
             "updated_at": "2020-06-10T11:04:31.588Z",
             "invited": true,
             "invite_accepted_at": "2020-06-10T11:04:31.588Z",
             "shadow_banned": false,
             "banned": false,
-            "channel_role": "member"
+            "channel_role": "member",
+            "notifications_muted": false,
+            "status": "member"
            }
         }
         """.withoutWhitespace()
@@ -167,7 +177,6 @@ internal object ChannelDtoTestData {
         members = listOf(
             DownstreamMemberDto(
                 user = UserDtoTestData.downstreamUser,
-                role = "owner",
                 created_at = Date(1591787071000),
                 updated_at = Date(1591787071588),
                 invited = true,
@@ -176,6 +185,12 @@ internal object ChannelDtoTestData {
                 shadow_banned = false,
                 banned = false,
                 channel_role = "member",
+                notifications_muted = false,
+                status = "member",
+                ban_expires = Date(1615218151355),
+                pinned_at = Date(1591787071588),
+                archived_at = Date(1591787071588),
+                extraData = emptyMap(),
             ),
         ),
         watchers = listOf(UserDtoTestData.downstreamUser),
@@ -184,6 +199,7 @@ internal object ChannelDtoTestData {
                 user = UserDtoTestData.downstreamUser,
                 last_read = Date(1591787071000),
                 unread_messages = 1,
+                last_read_message_id = "messageId",
             ),
         ),
         config = configDto,
@@ -194,7 +210,6 @@ internal object ChannelDtoTestData {
         own_capabilities = listOf(ChannelCapabilities.CONNECT_EVENTS, ChannelCapabilities.PIN_MESSAGE),
         membership = DownstreamMemberDto(
             user = UserDtoTestData.downstreamUser,
-            role = "owner",
             created_at = Date(1591787071000),
             updated_at = Date(1591787071588),
             invited = true,
@@ -203,6 +218,12 @@ internal object ChannelDtoTestData {
             shadow_banned = false,
             banned = false,
             channel_role = "member",
+            notifications_muted = false,
+            status = "member",
+            ban_expires = null,
+            pinned_at = null,
+            archived_at = null,
+            extraData = emptyMap(),
         ),
         extraData = mapOf("draft" to true),
     )
@@ -302,14 +323,18 @@ internal object ChannelDtoTestData {
           "members": [
            {
             "user": ${UserDtoTestData.upstreamJson},
-            "role": "owner",
             "created_at": "2020-06-10T11:04:31.000Z",
             "updated_at": "2020-06-10T11:04:31.588Z",
             "invited": true,
             "invite_accepted_at": "2020-06-10T11:04:31.588Z",
             "shadow_banned": false,
             "banned": false,
-            "channel_role": "member"
+            "channel_role": "member",
+            "notifications_muted": false,
+            "status": "member",
+            "ban_expires" : "2021-03-08T15:42:31.355Z",
+            "pinned_at": "2020-06-10T11:04:31.588Z",
+            "archived_at": "2020-06-10T11:04:31.588Z"
            }
           ],
           "watchers": [${UserDtoTestData.upstreamJson}],
@@ -345,7 +370,6 @@ internal object ChannelDtoTestData {
         members = listOf(
             UpstreamMemberDto(
                 user = UserDtoTestData.upstreamUser,
-                role = "owner",
                 created_at = Date(1591787071000),
                 updated_at = Date(1591787071588),
                 invited = true,
@@ -354,6 +378,12 @@ internal object ChannelDtoTestData {
                 shadow_banned = false,
                 banned = false,
                 channel_role = "member",
+                notifications_muted = false,
+                status = "member",
+                ban_expires = Date(1615218151355),
+                pinned_at = Date(1591787071588),
+                archived_at = Date(1591787071588),
+                extraData = emptyMap(),
             ),
         ),
         watchers = listOf(UserDtoTestData.upstreamUser),

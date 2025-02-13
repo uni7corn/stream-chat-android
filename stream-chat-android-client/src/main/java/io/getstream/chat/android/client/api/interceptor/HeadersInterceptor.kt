@@ -16,21 +16,79 @@
 
 package io.getstream.chat.android.client.api.interceptor
 
+import android.content.Context
+import android.os.Build
 import io.getstream.chat.android.client.ChatClient
 import okhttp3.Interceptor
 import okhttp3.Response
+import java.text.Normalizer
 
-internal class HeadersInterceptor(private val isAnonymous: () -> Boolean) : Interceptor {
+internal class HeadersInterceptor(
+    context: Context,
+    private val isAnonymous: () -> Boolean,
+) : Interceptor {
+
+    private val userAgent by lazy { buildUserAgent(context) }
+
     override fun intercept(chain: Interceptor.Chain): Response {
         val authType = if (isAnonymous()) "anonymous" else "jwt"
         val request = chain.request()
             .newBuilder()
+            .addHeader("User-Agent", userAgent)
             .addHeader("Content-Type", "application/json")
             .addHeader("stream-auth-type", authType)
-            .addHeader("Accept-Encoding", "application/gzip")
             .addHeader("X-Stream-Client", ChatClient.buildSdkTrackingHeaders())
             .addHeader("Cache-Control", "no-cache")
             .build()
         return chain.proceed(request)
+    }
+
+    private fun buildUserAgent(context: Context): String {
+        with(context.packageManager) {
+            val versionName = runCatching {
+                getPackageInfo(context.packageName, 0).versionName
+            }.getOrNull() ?: "nameNotFound"
+            val versionCode = runCatching {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    getPackageInfo(context.packageName, 0).longVersionCode.toString()
+                } else {
+                    getPackageInfo(context.packageName, 0).versionCode.toString()
+                }
+            }.getOrNull() ?: "versionCodeNotFound"
+
+            val applicationInfo = context.applicationInfo
+            val appName = if (applicationInfo != null) {
+                val stringId = applicationInfo.labelRes
+                if (stringId == 0) {
+                    applicationInfo.nonLocalizedLabel?.toString() ?: "UnknownApp"
+                } else {
+                    context.getString(stringId) ?: "UnknownApp"
+                }
+            } else { "UnknownApp" }
+
+            val manufacturer = Build.MANUFACTURER
+            val model = Build.MODEL
+            val version = Build.VERSION.SDK_INT
+            val versionRelease = Build.VERSION.RELEASE
+
+            val installerName = runCatching {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    getInstallSourceInfo(context.packageName).installingPackageName
+                } else {
+                    getInstallerPackageName(context.packageName)
+                }
+            }.getOrNull() ?: "StandAloneInstall"
+
+            return (
+                "$appName / $versionName($versionCode); $installerName; ($manufacturer; " +
+                    "$model; SDK $version; Android $versionRelease)"
+                )
+                .sanitize()
+        }
+    }
+
+    private fun String.sanitize(): String {
+        return Normalizer.normalize(this, Normalizer.Form.NFD)
+            .replace("[^\\p{ASCII}]".toRegex(), "")
     }
 }

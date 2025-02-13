@@ -16,8 +16,8 @@
 
 package io.getstream.chat.android.client.persistance.repository
 
-import io.getstream.chat.android.client.models.Reaction
-import io.getstream.chat.android.client.utils.SyncStatus
+import io.getstream.chat.android.models.Reaction
+import io.getstream.chat.android.models.SyncStatus
 import java.util.Date
 
 /**
@@ -90,4 +90,16 @@ public interface ReactionRepository {
         messageId: String,
         userId: String,
     ): List<Reaction>
+
+    /**
+     * Deletes a reaction.
+     *
+     * @param reaction [Reaction]
+     */
+    public suspend fun deleteReaction(reaction: Reaction)
+
+    /**
+     * Clear reactions of this repository.
+     */
+    public suspend fun clear()
 }

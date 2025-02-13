@@ -16,64 +16,69 @@
 
 package io.getstream.chat.android.client.clientstate
 
-import io.getstream.chat.android.client.logger.ChatLogger
-import io.getstream.chat.android.client.models.User
 import io.getstream.chat.android.core.internal.fsm.FiniteStateMachine
+import io.getstream.chat.android.models.User
+import io.getstream.log.taggedLogger
+import kotlinx.coroutines.flow.StateFlow
 
 internal class UserStateService {
-    private val logger = ChatLogger.get("UserStateService")
+    private val logger by taggedLogger("Chat:UserStateService")
 
-    fun onUserUpdated(user: User) {
+    suspend fun onUserUpdated(user: User) {
+        logger.d { "[onUserUpdated] user.id: '${user.id}'" }
         fsm.sendEvent(UserStateEvent.UserUpdated(user))
     }
 
-    fun onSetUser(user: User) {
-        fsm.sendEvent(UserStateEvent.ConnectUser(user))
+    suspend fun onSetUser(user: User, isAnonymous: Boolean) {
+        logger.i { "[onSetUser] user.id: '${user.id}', isAnonymous: $isAnonymous" }
+        if (isAnonymous) {
+            fsm.sendEvent(UserStateEvent.ConnectAnonymous(user))
+        } else {
+            fsm.sendEvent(UserStateEvent.ConnectUser(user))
+        }
     }
 
-    fun onSetAnonymous() {
-        fsm.sendEvent(UserStateEvent.ConnectAnonymous)
-    }
-
-    fun onLogout() {
+    suspend fun onLogout() {
+        logger.i { "[onLogout] no args" }
         fsm.sendEvent(UserStateEvent.UnsetUser)
     }
 
-    fun onSocketUnrecoverableError() {
+    suspend fun onSocketUnrecoverableError() {
+        logger.e { "[onSocketUnrecoverableError] no args" }
         fsm.sendEvent(UserStateEvent.UnsetUser)
     }
 
     internal val state: UserState
         get() = fsm.state
 
+    internal val stateFlow: StateFlow<UserState>
+        get() = fsm.stateFlow
+
     private val fsm = FiniteStateMachine<UserState, UserStateEvent> {
         defaultHandler { state, event ->
-            logger.logE("Can't handle $event while being in state ${state::class.simpleName}")
+            logger.e { "Can't handle $event while being in state ${state::class.simpleName}" }
             state
         }
         initialState(UserState.NotSet)
         state<UserState.NotSet> {
             onEvent<UserStateEvent.ConnectUser> { event -> UserState.UserSet(event.user) }
-            onEvent<UserStateEvent.ConnectAnonymous> { UserState.Anonymous.Pending }
+            onEvent<UserStateEvent.ConnectAnonymous> { event -> UserState.AnonymousUserSet(event.user) }
+            onEvent<UserStateEvent.UnsetUser> { state }
         }
         state<UserState.UserSet> {
             onEvent<UserStateEvent.UserUpdated> { event -> UserState.UserSet(event.user) }
             onEvent<UserStateEvent.UnsetUser> { UserState.NotSet }
         }
-        state<UserState.Anonymous.Pending> {
-            onEvent<UserStateEvent.UserUpdated> { event -> UserState.Anonymous.AnonymousUserSet(event.user) }
-            onEvent<UserStateEvent.UnsetUser> { UserState.NotSet }
-        }
-        state<UserState.Anonymous.AnonymousUserSet> {
-            onEvent<UserStateEvent.UserUpdated> { event -> UserState.Anonymous.AnonymousUserSet(event.user) }
+        state<UserState.AnonymousUserSet> {
+            onEvent<UserStateEvent.UserUpdated> { event -> UserState.AnonymousUserSet(event.user) }
             onEvent<UserStateEvent.UnsetUser> { UserState.NotSet }
         }
     }
 
     private sealed class UserStateEvent {
-        class ConnectUser(val user: User) : UserStateEvent()
-        class UserUpdated(val user: User) : UserStateEvent()
-        object ConnectAnonymous : UserStateEvent()
-        object UnsetUser : UserStateEvent()
+        data class ConnectUser(val user: User) : UserStateEvent()
+        data class UserUpdated(val user: User) : UserStateEvent()
+        data class ConnectAnonymous(val user: User) : UserStateEvent()
+        object UnsetUser : UserStateEvent() { override fun toString(): String = "UnsetUser" }
     }
 }

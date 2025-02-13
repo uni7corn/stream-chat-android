@@ -16,14 +16,17 @@
 
 package io.getstream.chat.android.client.api.models
 
-import io.getstream.chat.android.client.models.User
+import io.getstream.chat.android.models.FilterObject
+import io.getstream.chat.android.models.User
+import io.getstream.chat.android.models.querysort.QuerySortByField
+import io.getstream.chat.android.models.querysort.QuerySorter
 
 public data class QueryUsersRequest @JvmOverloads constructor(
     var filter: FilterObject,
     val offset: Int,
     val limit: Int,
-    var querySort: QuerySort<User> = QuerySort(),
-    var presence: Boolean = false
+    var querySort: QuerySorter<User> = QuerySortByField(),
+    var presence: Boolean = false,
 ) {
     val sort: List<Map<String, Any>> = querySort.toDto()
 }
